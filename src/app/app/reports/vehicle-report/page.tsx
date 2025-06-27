@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -19,6 +20,13 @@ import type { StockTransaction, VehicleReportItem } from "@/lib/types";
 import { startOfDay, endOfDay, format } from "date-fns";
 import { VehicleReportDisplay } from "@/components/reports/VehicleReportDisplay";
 
+interface ReportState {
+  items: VehicleReportItem[];
+  startMeter?: number;
+  endMeter?: number;
+  totalKm?: number;
+}
+
 export default function VehicleReportPage() {
   const { currentUser } = useAuth();
   const router = useRouter();
@@ -28,7 +36,7 @@ export default function VehicleReportPage() {
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [reportData, setReportData] = useState<VehicleReportItem[] | null>(null);
+  const [reportData, setReportData] = useState<ReportState | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedVehicleNumber, setSelectedVehicleNumber] = useState<string | undefined>(undefined);
 
@@ -59,13 +67,14 @@ export default function VehicleReportPage() {
     const filteredTransactions = allTransactions.filter(tx =>
       tx.vehicleId === selectedVehicleId &&
       tx.transactionDate >= reportStartDate &&
-      tx.transactionDate <= reportEndDate &&
-      (tx.type === 'LOAD_TO_VEHICLE' || tx.type === 'UNLOAD_FROM_VEHICLE')
+      tx.transactionDate <= reportEndDate
     );
-
+    
+    // Process Stock Movement
     const processedData = new Map<string, VehicleReportItem>();
+    const relevantStockTxs = filteredTransactions.filter(tx => tx.type === 'LOAD_TO_VEHICLE' || tx.type === 'UNLOAD_FROM_VEHICLE' || tx.type === 'ISSUE_SAMPLE');
 
-    for (const tx of filteredTransactions) {
+    for (const tx of relevantStockTxs) {
       if (!processedData.has(tx.productId)) {
         processedData.set(tx.productId, {
           productId: tx.productId,
@@ -80,7 +89,7 @@ export default function VehicleReportPage() {
       const item = processedData.get(tx.productId)!;
       if (tx.type === 'LOAD_TO_VEHICLE') {
         item.totalLoaded += tx.quantity;
-      } else if (tx.type === 'UNLOAD_FROM_VEHICLE') {
+      } else if (tx.type === 'UNLOAD_FROM_VEHICLE' || tx.type === 'ISSUE_SAMPLE') {
         item.totalUnloaded += tx.quantity;
       }
     }
@@ -88,8 +97,25 @@ export default function VehicleReportPage() {
     processedData.forEach(item => {
         item.netChange = item.totalLoaded - item.totalUnloaded;
     });
+    
+    // Process Mileage
+    const loadTxs = filteredTransactions.filter(tx => tx.type === 'LOAD_TO_VEHICLE' && tx.startMeter);
+    const unloadTxs = filteredTransactions.filter(tx => tx.type === 'UNLOAD_FROM_VEHICLE' && tx.endMeter);
 
-    setReportData(Array.from(processedData.values()));
+    const startMeter = loadTxs.length > 0 ? Math.min(...loadTxs.map(tx => tx.startMeter!)) : undefined;
+    const endMeter = unloadTxs.length > 0 ? Math.max(...unloadTxs.map(tx => tx.endMeter!)) : undefined;
+    
+    let totalKm: number | undefined;
+    if (startMeter !== undefined && endMeter !== undefined && endMeter >= startMeter) {
+        totalKm = endMeter - startMeter;
+    }
+
+    setReportData({
+        items: Array.from(processedData.values()),
+        startMeter,
+        endMeter,
+        totalKm
+    });
     setIsGenerating(false);
   };
   
@@ -111,7 +137,7 @@ export default function VehicleReportPage() {
     <div className="space-y-6">
       <PageHeader 
         title="Vehicle Report" 
-        description="Analyze stock loaded and unloaded from a specific vehicle."
+        description="Analyze stock loaded, unloaded, and mileage for a specific vehicle."
         icon={Truck}
       />
       
@@ -173,7 +199,7 @@ export default function VehicleReportPage() {
           </div>
       ) : reportData ? (
         <VehicleReportDisplay 
-            data={reportData} 
+            report={reportData} 
             vehicleNumber={selectedVehicleNumber || ""}
             reportDate={selectedDate}
         />
