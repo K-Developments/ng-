@@ -1,7 +1,7 @@
 
 "use client";
 
-import { MoreHorizontal, Edit, Trash2, PlusCircle, Users2, Search, PhoneCall, Loader2, CheckCircle } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, PlusCircle, Users2, Search, PhoneCall, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -86,43 +86,26 @@ export function CustomerDataTable() {
   };
 
   const handleSaveCustomer = async (customerToSave: Customer) => {
-    let result: Customer | null = null;
-    let action: 'add' | 'update' | null = null;
-    
+    let success = false;
     if (editingCustomer) { // Edit mode
       if (!canManageCustomers) return;
-      result = await updateCustomer(customerToSave.id, customerToSave);
-      action = 'update';
+      const result = await updateCustomer(customerToSave.id, customerToSave);
+      success = !!result;
     } else { // Add mode
       if (!canAddCustomers) return;
-      result = await addCustomer({
+      const result = await addCustomer({
         name: customerToSave.name,
         phone: customerToSave.phone,
         address: customerToSave.address,
         shopName: customerToSave.shopName,
         status: customerToSave.status || 'active',
       });
-       action = 'add';
+      success = !!result;
     }
 
-    if (result) {
-      toast({
-        title: action === 'add' ? "Customer Added" : "Customer Updated",
-        description: `${customerToSave.name} has been successfully ${action === 'add' ? 'added' : 'updated'}.`,
-      });
+    if (success) {
       setIsCustomerDialogOpen(false);
       setEditingCustomer(null);
-    }
-  };
-  
-  const handleActivateCustomer = async (customer: Customer) => {
-    if (!canManageCustomers) return;
-    const result = await updateCustomer(customer.id, { status: 'active' });
-    if (result) {
-        toast({
-            title: "Customer Activated",
-            description: `${customer.name} is now an active customer.`,
-        });
     }
   };
 
@@ -134,14 +117,7 @@ export function CustomerDataTable() {
 
   const handleDeleteConfirmed = async () => {
     if (!canManageCustomers || !customerToDelete) return;
-    const customerName = customerToDelete.name;
-    const success = await deleteCustomer(customerToDelete.id);
-    if (success) {
-      toast({
-        title: "Customer Deleted",
-        description: `${customerName} has been successfully deleted.`,
-      });
-    }
+    await deleteCustomer(customerToDelete.id);
     setIsDeleteAlertOpen(false);
     setCustomerToDelete(null);
   };
@@ -274,11 +250,6 @@ export function CustomerDataTable() {
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="w-40">
                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        {activeTab === 'pending' && (
-                                            <DropdownMenuItem onClick={() => handleActivateCustomer(customer)} className="text-green-600 focus:text-green-700">
-                                                <CheckCircle className="mr-2 h-4 w-4" /> Activate
-                                            </DropdownMenuItem>
-                                        )}
                                         <DropdownMenuItem onClick={() => handleOpenEditDialog(customer)}>
                                           <Edit className="mr-2 h-4 w-4" /> Edit
                                         </DropdownMenuItem>
@@ -390,11 +361,6 @@ export function CustomerDataTable() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-40">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    {activeTab === 'pending' && (
-                                        <DropdownMenuItem onClick={() => handleActivateCustomer(customer)} className="text-green-600 focus:text-green-700">
-                                            <CheckCircle className="mr-2 h-4 w-4" /> Activate
-                                        </DropdownMenuItem>
-                                    )}
                                     <DropdownMenuItem onClick={() => handleOpenEditDialog(customer)}>
                                       <Edit className="mr-2 h-4 w-4" /> Edit
                                     </DropdownMenuItem>
