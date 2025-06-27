@@ -39,6 +39,7 @@ import {
   returnTransactionConverter,
   type FirestoreReturnTransaction,
   type Payment,
+  type FirestorePayment,
 } from "./types";
 
 // Product Services
@@ -58,19 +59,18 @@ export const getProduct = async (id: string): Promise<Product | null> => {
 
 export const addProduct = async (productData: Omit<Product, 'id'>): Promise<string> => {
   checkFirebase();
-  const dataToCreate = productConverter.toFirestore(productData as FirestoreProduct);
-  const docRef = await addDoc(collection(db, "products"), dataToCreate);
+  const docRef = await addDoc(collection(db, "products").withConverter(productConverter), productData);
   return docRef.id;
 };
 
 export const updateProduct = async (id: string, productData: Partial<Omit<Product, 'id'>>): Promise<void> => {
   checkFirebase();
   const productDocRef = doc(db, "products", id);
-   const dataToUpdate: Partial<FirestoreProduct> = {
+  const dataWithTimestamp = {
     ...productData,
     updatedAt: Timestamp.now()
   };
-  await updateDoc(productDocRef, dataToUpdate);
+  await updateDoc(productDocRef, dataWithTimestamp);
 };
 
 export const deleteProduct = async (id: string): Promise<void> => {
@@ -96,19 +96,18 @@ export const getCustomer = async (id: string): Promise<Customer | null> => {
 
 export const addCustomer = async (customerData: Omit<Customer, 'id'>): Promise<string> => {
   checkFirebase();
-  const dataToCreate = customerConverter.toFirestore(customerData as FirestoreCustomer);
-  const docRef = await addDoc(collection(db, "customers"), dataToCreate);
+  const docRef = await addDoc(collection(db, "customers").withConverter(customerConverter), customerData);
   return docRef.id;
 };
 
 export const updateCustomer = async (id: string, customerData: Partial<Omit<Customer, 'id'>>): Promise<void> => {
   checkFirebase();
   const customerDocRef = doc(db, "customers", id);
-  const dataToUpdate: Partial<FirestoreCustomer> = {
+  const dataWithTimestamp = {
     ...customerData,
     updatedAt: Timestamp.now()
   };
-  await updateDoc(customerDocRef, dataToUpdate);
+  await updateDoc(customerDocRef, dataWithTimestamp);
 };
 
 export const deleteCustomer = async (id: string): Promise<void> => {
@@ -132,111 +131,36 @@ async function generateCustomSaleId(): Promise<string> {
     const newCount = await runTransaction(db, async (transaction) => {
       const counterDoc = await transaction.get(counterRef);
       if (!counterDoc.exists()) {
-        // If counter for today doesn't exist, this is the first sale.
         transaction.set(counterRef, { count: 1 });
         return 1;
       } else {
-        // Otherwise, increment the existing counter.
         const count = counterDoc.data().count + 1;
         transaction.update(counterRef, { count });
         return count;
       }
     });
-    // Format: sale-MMDD-saleNumber
     return `sale-${datePart}-${newCount}`;
   } catch (e) {
     console.error("Custom sale ID transaction failed: ", e);
-    // Fallback to a random ID to prevent the entire sale from failing
     const randomPart = Math.random().toString(36).substring(2, 8);
     return `sale-${datePart}-err-${randomPart}`;
   }
 }
 
-export const addSale = async (
-  saleData: Omit<Sale, 'id' | 'saleDate' | 'items' | 'chequeDetails' | 'bankTransferDetails'> & 
-            { saleDate: Date, items: CartItem[], chequeDetails?: ChequeInfo, bankTransferDetails?: BankTransferInfo } & { vehicleId?: string }
-): Promise<string> => {
+export const addSale = async (saleData: Omit<Sale, 'id'>): Promise<string> => {
   checkFirebase();
-  const newCustomId = await generateCustomSaleId(); // Generate custom ID
-  
+  const newCustomId = await generateCustomSaleId();
   const batch = writeBatch(db);
-  const saleDocRef = doc(db, "sales", newCustomId); // Use custom ID
-  
-  const firestoreSaleItems: FirestoreCartItem[] = saleData.items.map(item => {
-    const firestoreItem: FirestoreCartItem = {
-      productRef: doc(db, "products", item.id).path, 
-      quantity: item.quantity,
-      appliedPrice: item.appliedPrice,
-      saleType: item.saleType,
-      productName: item.name, 
-      productCategory: item.category,
-      productPrice: item.price, 
-      isOfferItem: item.isOfferItem || false,
-    };
-    if (item.sku !== undefined) {
-      firestoreItem.productSku = item.sku;
-    }
-    return firestoreItem;
-  });
+  const saleDocRef = doc(db, "sales", newCustomId);
 
-  let firestoreChequeDetails: FirestoreChequeInfo | undefined = undefined;
-  if (saleData.chequeDetails) {
-      firestoreChequeDetails = {
-          ...saleData.chequeDetails,
-          date: saleData.chequeDetails.date ? Timestamp.fromDate(saleData.chequeDetails.date) : undefined,
-      };
-      Object.keys(firestoreChequeDetails).forEach(key => {
-          if ((firestoreChequeDetails as any)[key] === undefined) delete (firestoreChequeDetails as any)[key];
-      });
-      if (Object.keys(firestoreChequeDetails).length === 0) firestoreChequeDetails = undefined;
-  }
-
-  let firestoreBankTransferDetails: FirestoreBankTransferInfo | undefined = undefined;
-  if (saleData.bankTransferDetails) {
-      firestoreBankTransferDetails = { ...saleData.bankTransferDetails };
-      Object.keys(firestoreBankTransferDetails).forEach(key => {
-          if ((firestoreBankTransferDetails as any)[key] === undefined) delete (firestoreBankTransferDetails as any)[key];
-      });
-      if (Object.keys(firestoreBankTransferDetails).length === 0) firestoreBankTransferDetails = undefined;
-  }
-
-
-  const firestoreSaleData: FirestoreSale = {
-    items: firestoreSaleItems,
-    subTotal: saleData.subTotal,
-    discountPercentage: saleData.discountPercentage,
-    discountAmount: saleData.discountAmount,
-    totalAmount: saleData.totalAmount, 
-    
-    paidAmountCash: saleData.paidAmountCash,
-    paidAmountCheque: saleData.paidAmountCheque,
-    chequeDetails: firestoreChequeDetails,
-    paidAmountBankTransfer: saleData.paidAmountBankTransfer,
-    bankTransferDetails: firestoreBankTransferDetails,
-    totalAmountPaid: saleData.totalAmountPaid,
-    outstandingBalance: saleData.outstandingBalance,
-    changeGiven: saleData.changeGiven,
-    paymentSummary: saleData.paymentSummary,
-
-    saleDate: Timestamp.fromDate(saleData.saleDate),
-    staffId: saleData.staffId,
-    offerApplied: saleData.offerApplied || false,
-    createdAt: Timestamp.now(), 
-    updatedAt: Timestamp.now()  
+  const saleObjectForConversion: Sale = {
+    id: newCustomId,
+    ...saleData,
   };
-
-  if (saleData.customerId !== undefined) firestoreSaleData.customerId = saleData.customerId;
-  if (saleData.customerName !== undefined) firestoreSaleData.customerName = saleData.customerName;
-  if (saleData.vehicleId) firestoreSaleData.vehicleId = saleData.vehicleId;
   
-  const cleanedFirestoreSaleData = { ...firestoreSaleData };
-  Object.keys(cleanedFirestoreSaleData).forEach(key => {
-    if ((cleanedFirestoreSaleData as any)[key] === undefined) {
-      delete (cleanedFirestoreSaleData as any)[key];
-    }
-  });
-
-  batch.set(saleDocRef, saleConverter.toFirestore(cleanedFirestoreSaleData as FirestoreSale));
+  const firestoreSaleData = saleConverter.toFirestore(saleObjectForConversion);
+  
+  batch.set(saleDocRef, firestoreSaleData);
 
 
   // STOCK UPDATE LOGIC
@@ -347,6 +271,7 @@ interface ProcessReturnArgs {
   customerName?: string;
   settleOutstandingAmount?: number;
   refundAmount?: number;
+  cashPaidOut?: number;
   payment?: {
     amountPaid: number;
     paymentSummary: string;
@@ -366,6 +291,7 @@ export const processReturnTransaction = async ({
   customerName,
   settleOutstandingAmount,
   refundAmount,
+  cashPaidOut,
   payment,
   vehicleId,
 }: ProcessReturnArgs): Promise<{ returnId: string, returnData: ReturnTransaction }> => {
@@ -420,7 +346,10 @@ export const processReturnTransaction = async ({
         notes: `Credit from Return ID: ${returnId}`
       };
       
-      const firestorePayment = { ...creditPayment, date: Timestamp.fromDate(creditPayment.date) };
+      const firestorePayment: FirestorePayment = { 
+          ...creditPayment, 
+          date: Timestamp.fromDate(creditPayment.date) 
+      };
 
       transaction.update(saleRef, {
         outstandingBalance: currentSaleData.outstandingBalance - settleOutstandingAmount,
@@ -520,42 +449,45 @@ export const processReturnTransaction = async ({
       }
     }
     
-    const firestoreSaleItems = newSaleItems.map((item: CartItem): FirestoreCartItem => ({
-      productRef: doc(db, 'products', item.id).path, quantity: item.quantity, appliedPrice: item.appliedPrice, saleType: item.saleType,
-      productName: item.name, productCategory: item.category, productPrice: item.price, isOfferItem: item.isOfferItem || false,
-      returnedQuantity: item.returnedQuantity || 0, ...(item.sku !== undefined && { productSku: item.sku }),
-    }));
-    transaction.update(saleRef, { items: firestoreSaleItems, updatedAt: Timestamp.now() });
+    // Update the original sale with new returned quantities
+    transaction.update(saleRef, {
+      items: newSaleItems.map(item => {
+        const firestoreItem: FirestoreCartItem = {
+          productRef: doc(db, "products", item.id).path,
+          quantity: item.quantity,
+          appliedPrice: item.appliedPrice,
+          saleType: item.saleType,
+          productName: item.name,
+          productCategory: item.category,
+          productPrice: item.price,
+          isOfferItem: item.isOfferItem || false,
+        };
+        if (item.returnedQuantity !== undefined) {
+          firestoreItem.returnedQuantity = item.returnedQuantity;
+        }
+        if (item.sku !== undefined) {
+          firestoreItem.productSku = item.sku;
+        }
+        return firestoreItem;
+      }),
+      updatedAt: Timestamp.now(),
+    });
 
     const returnDocRef = doc(db, 'returns', returnId);
-    const returnDataForFirestore: FirestoreReturnTransaction = {
-      originalSaleId: saleId, returnDate: Timestamp.now(), createdAt: Timestamp.now(), staffId, customerId, customerName,
-      returnedItems: returnedItems.map(item => ({
-        productRef: doc(db, 'products', item.id), quantity: item.quantity, appliedPrice: item.appliedPrice, saleType: item.saleType,
-        productName: item.name, productCategory: item.category, productPrice: item.price, productSku: item.sku
-      })),
-      exchangedItems: exchangedItems.map(item => ({
-        productRef: doc(db, 'products', item.id), quantity: item.quantity, appliedPrice: item.appliedPrice, saleType: item.saleType,
-        productName: item.name, productCategory: item.category, productPrice: item.price, productSku: item.sku
-      })),
-      settleOutstandingAmount, refundAmount,
+    
+    const returnDataForTx: ReturnTransaction = {
+      id: returnId,
+      originalSaleId: saleId, returnDate: new Date(), staffId, customerId, customerName,
+      returnedItems: returnedItems,
+      exchangedItems: exchangedItems,
+      settleOutstandingAmount, 
+      refundAmount,
+      cashPaidOut,
+      ...payment
     };
-    
-    if (payment) {
-        returnDataForFirestore.amountPaid = payment.amountPaid;
-        returnDataForFirestore.paymentSummary = payment.paymentSummary;
-        returnDataForFirestore.changeGiven = payment.changeGiven;
-        if (payment.chequeDetails) {
-            returnDataForFirestore.chequeDetails = {
-                ...payment.chequeDetails,
-                date: payment.chequeDetails.date ? Timestamp.fromDate(payment.chequeDetails.date) : undefined
-            }
-        }
-        returnDataForFirestore.bankTransferDetails = payment.bankTransferDetails;
-    }
-    
-    transaction.set(returnDocRef, returnTransactionConverter.toFirestore(returnDataForFirestore));
-    finalReturnData = returnTransactionConverter.fromFirestore({ id: returnId, data: () => returnDataForFirestore });
+
+    transaction.set(returnDocRef, returnTransactionConverter.toFirestore(returnDataForTx));
+    finalReturnData = returnDataForTx;
   });
 
   if (!finalReturnData) {
@@ -595,4 +527,3 @@ export const updateProductStockTransactional = async (productId: string, quantit
     throw e; 
   }
 };
-
