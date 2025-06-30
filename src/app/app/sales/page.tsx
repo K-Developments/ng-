@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { PackageSearch, ShoppingCart, Tag, X, Search, Maximize, Minimize, Loader2, Gift, Truck, Warehouse, AlertCircle } from "lucide-react";
+import { PackageSearch, ShoppingCart, Tag, X, Search, Maximize, Minimize, Loader2, Gift, Truck, Warehouse, AlertCircle, CreditCard } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { POSProductCard } from "@/components/sales/POSProductCard";
 import { CartView } from "@/components/sales/CartView";
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import type { Product, CartItem, Customer, Sale, ChequeInfo, BankTransferInfo, StockTransaction, Vehicle } from "@/lib/types";
+import type { Product, CartItem, Customer, Sale, ChequeInfo, BankTransferInfo, StockTransaction, Vehicle, ReturnTransaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useProducts } from "@/hooks/useProducts";
@@ -27,6 +27,7 @@ import { useVehicles } from "@/hooks/useVehicles";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSalesData } from "@/hooks/useSalesData";
+import { useReturns } from "@/hooks/useReturns";
 
 // Helper function to reconcile offer items in the cart
 function reconcileOfferItems(
@@ -100,6 +101,7 @@ export default function SalesPage() {
   const isCashier = currentUser?.role === 'cashier';
   
   const { sales: allSales } = useSalesData(true); // Get all sales data
+  const { returns, isLoading: isLoadingReturns, error: returnsError } = useReturns();
   
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -112,7 +114,7 @@ export default function SalesPage() {
   const [isSalesPageFullScreen, setIsSalesPageFullScreen] = useState(false);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [isBuy12Get1FreeActive, setIsBuy12Get1FreeActive] = useState(false);
-  const [excludedOfferProductIds, setExcludedOfferProductIds] = useState<Set<string>>(new Set());
+  const [excludedOfferProductIds, setExcludedOfferProductIds] = useState<Set<string>>(new Set<string>());
 
   // New states for vehicle stock view
   const [viewMode, setViewMode] = useState<'main' | 'vehicle'>(isCashier ? 'vehicle' : 'main');
@@ -136,6 +138,21 @@ export default function SalesPage() {
       .filter(sale => sale.customerId === selectedCustomer.id)
       .reduce((total, sale) => total + (sale.outstandingBalance || 0), 0);
   }, [selectedCustomer, allSales]);
+
+  const customerCreditBalance = useMemo(() => {
+    if (!selectedCustomer || !allSales || !returns) return 0;
+
+    const totalRefunds = returns
+      .filter(r => r.customerId === selectedCustomer.id && r.refundAmount)
+      .reduce((sum, r) => sum + r.refundAmount!, 0);
+
+    const totalCreditUsed = allSales
+      .filter(s => s.customerId === selectedCustomer.id && s.creditUsed)
+      .reduce((sum, s) => sum + s.creditUsed!, 0);
+      
+    return totalRefunds - totalCreditUsed;
+  }, [selectedCustomer, allSales, returns]);
+
 
   const toggleSalesPageFullScreen = () => setIsSalesPageFullScreen(!isSalesPageFullScreen);
 
@@ -165,7 +182,7 @@ export default function SalesPage() {
 
   const handleToggleOffer = (checked: boolean) => {
     setIsBuy12Get1FreeActive(checked);
-    const newExclusions = checked ? excludedOfferProductIds : new Set();
+    const newExclusions = checked ? excludedOfferProductIds : new Set<string>();
     if (!checked) {
       // Clear exclusions when turning the offer off
       setExcludedOfferProductIds(newExclusions);
@@ -214,7 +231,7 @@ export default function SalesPage() {
         const currentQty = stockMap.get(tx.productId) || 0;
         if (tx.type === 'LOAD_TO_VEHICLE') {
           stockMap.set(tx.productId, currentQty + tx.quantity);
-        } else if (tx.type === 'UNLOAD_FROM_VEHICLE') {
+        } else if (tx.type === 'UNLOAD_FROM_VEHICLE' || tx.type === 'ISSUE_SAMPLE') {
           stockMap.set(tx.productId, currentQty - tx.quantity);
         }
       });
@@ -366,7 +383,7 @@ export default function SalesPage() {
     setSelectedCustomer(null);
     setCurrentSaleType('retail');
     setIsBuy12Get1FreeActive(false); 
-    setExcludedOfferProductIds(new Set());
+    setExcludedOfferProductIds(new Set<string>());
   };
 
   // The subtotal before any manual per-item discounts are applied.
@@ -396,7 +413,8 @@ export default function SalesPage() {
 
   const handleSuccessfulSale = async (
     salePaymentDetails: Omit<Sale, 'id' | 'saleDate' | 'staffId' | 'items' | 'subTotal' | 'discountPercentage' | 'discountAmount' | 'totalAmount' | 'offerApplied'> & 
-                        Pick<Sale, 'paidAmountCash' | 'paidAmountCheque' | 'chequeDetails' | 'paidAmountBankTransfer' | 'bankTransferDetails' | 'totalAmountPaid' | 'outstandingBalance' | 'changeGiven' | 'paymentSummary'>
+                        { creditUsed?: number } &
+                        Pick<Sale, 'paidAmountCash' | 'paidAmountCheque' | 'chequeDetails' | 'bankTransferDetails' | 'totalAmountPaid' | 'outstandingBalance' | 'changeGiven' | 'paymentSummary'>
   ): Promise<Sale | null> => {
     setIsProcessingSale(true);
     const salePayload = {
@@ -423,6 +441,7 @@ export default function SalesPage() {
       chequeDetails: salePaymentDetails.chequeDetails,
       paidAmountBankTransfer: salePaymentDetails.paidAmountBankTransfer,
       bankTransferDetails: salePaymentDetails.bankTransferDetails,
+      creditUsed: salePaymentDetails.creditUsed,
       totalAmountPaid: salePaymentDetails.totalAmountPaid,
       outstandingBalance: salePaymentDetails.outstandingBalance,
       changeGiven: salePaymentDetails.changeGiven,
@@ -510,7 +529,7 @@ export default function SalesPage() {
     </Button>
   );
 
-  if (isLoadingProducts && !allProducts?.length) { 
+  if ((isLoadingProducts || isLoadingReturns) && !allProducts?.length) { 
     return (
         <div className="flex flex-col items-center justify-center h-screen">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -708,6 +727,7 @@ export default function SalesPage() {
               cartItems={cartItems}
               selectedCustomer={selectedCustomer}
               customerOutstandingBalance={customerOutstandingBalance}
+              customerCreditBalance={customerCreditBalance}
               onUpdateQuantity={handleUpdateQuantity}
               onRemoveItem={handleRemoveItem}
               onSelectCustomer={handleSelectCustomer} 
@@ -756,6 +776,7 @@ export default function SalesPage() {
               cartItems={cartItems}
               selectedCustomer={selectedCustomer}
               customerOutstandingBalance={customerOutstandingBalance}
+              customerCreditBalance={customerCreditBalance}
               onUpdateQuantity={handleUpdateQuantity}
               onRemoveItem={handleRemoveItem}
               onSelectCustomer={handleSelectCustomer} 
@@ -774,8 +795,8 @@ export default function SalesPage() {
       <BillDialog
         isOpen={isBillOpen}
         onOpenChange={(isOpenDialog) => {
-          setIsBillOpen(isOpenDialog);
           if (!isOpenDialog) setIsProcessingSale(false); 
+          setIsBillOpen(isOpenDialog);
         }}
         cartItems={cartItems}
         customer={selectedCustomer}
@@ -784,9 +805,8 @@ export default function SalesPage() {
         currentTotalAmount={currentTotalAmountDue} 
         onConfirmSale={handleSuccessfulSale}
         offerApplied={isBuy12Get1FreeActive} 
+        customerCreditBalance={customerCreditBalance}
       />
     </div>
   );
 }
-
-    
