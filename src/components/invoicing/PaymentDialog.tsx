@@ -168,10 +168,10 @@ export function PaymentDialog({ isOpen, onOpenChange, sale, onSuccess }: Payment
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-          "sm:max-w-lg flex flex-col max-h-[100vh]",
+          "sm:max-w-lg flex flex-col max-h-[90vh]",
           "print:shadow-none print:border-none print:max-w-full print:max-h-none print:m-0 print:p-0 print:h-auto print:overflow-visible"
         )}>
-         <div id="payment-receipt-content" className="hidden print:block p-4 w-[100%] h-[100%]">
+         <div id="payment-receipt-content" className="hidden print:block p-4">
             <div className="text-center mb-4">
               <div className="logo-container inline-block">
                 <AppLogo size="md"/>
@@ -179,7 +179,7 @@ export function PaymentDialog({ isOpen, onOpenChange, sale, onSuccess }: Payment
               <p className="text-xs">4/1 Bujjampala, Dankotuwa</p>
               <p className="text-xs">Hotline: 077-3383721, 077-1066595</p>
             </div>
-            <h2 className="text-center font-bold text-xl mb-4">PAYMENT RECEIPT</h2>
+            <h2 className="text-center font-bold text-lg mb-4">PAYMENT RECEIPT</h2>
              <Separator className="my-2 summary-separator"/>
             <div className="text-xs space-y-0.5">
                 <p><strong>Original Invoice ID:</strong> {receipt.saleId}</p>
