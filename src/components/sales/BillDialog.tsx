@@ -304,7 +304,8 @@ export function BillDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
         className={cn(
-          "sm:max-w-lg flex flex-col printable-content",
+          "sm:max-w-lg flex flex-col",
+          "print:shadow-none print:border-none print:max-w-full print:max-h-none print:m-0 print:p-0 print:h-auto print:overflow-visible",
           isOpen ? "max-h-[90vh]" : "" 
         )}
       >
@@ -320,7 +321,10 @@ export function BillDialog({
         <ScrollArea className="flex-grow print:overflow-visible print:max-h-none print:h-auto">
           <div 
             id="bill-content" 
-            className="p-6 bg-card text-card-foreground"
+            className={cn(
+                "p-6 bg-card text-card-foreground",
+                "print:p-2 print:bg-transparent print:text-black print:max-h-none print:overflow-visible"
+            )}
           >
             <div className="text-center mb-6">
               <div className="flex justify-center mb-2 logo-container">
