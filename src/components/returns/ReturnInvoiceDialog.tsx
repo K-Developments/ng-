@@ -74,7 +74,7 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-grow print:overflow-visible print:max-h-none print:h-auto">
+        <ScrollArea className="flex-grow print:overflow-visible print:max-h-none print:h-auto pb-6">
           <div 
             id="return-receipt-content" 
             className={cn(
@@ -227,7 +227,7 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
               )}
             </div>
              <div className="flex-grow"></div> {/* This will push the thank you note down */}
-  <p className="text-center text-xs print:text-[9px] mt-6 print:mt-6">Thank you!</p>
+  <p className="text-center text-xs print:text-[9px] mt-6 print:pt-6">Thank you!</p>
           </div>
         </ScrollArea>
         <div className="p-4 border-t print:hidden flex justify-end gap-2">
