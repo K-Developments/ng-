@@ -298,41 +298,39 @@ export function BillDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
         className={cn(
-          "max-w-[95vw] w-full mx-2 flex flex-col",
+          "max-w-[95vw] w-full mx-2 flex flex-col p-0",
           "sm:max-w-lg sm:mx-0",
-          "print:shadow-none print:border-none print:max-w-full print:max-h-none print:m-0 print:p-0 print:h-auto print:overflow-visible",
+          "print:shadow-none print:border-none print:max-w-none print:max-h-none print:m-0 print:p-0 print:h-auto print:overflow-visible",
           isOpen ? "max-h-[95vh] sm:max-h-[90vh]" : "" 
         )}
       >
-        <DialogHeader className="print:hidden px-4 sm:px-6 pt-4 sm:pt-6">
-          <DialogTitle className="font-headline text-lg sm:text-xl">
-            {isReprintMode ? "View Invoice" : "Transaction Receipt & Payment"}
-          </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
-            {isReprintMode ? `Details for invoice ${displaySaleId}.` : "Finalize payment and print the receipt."}
+        <DialogHeader className="print:hidden px-6 pt-6">
+          <DialogTitle className="font-headline text-xl">Transaction Receipt</DialogTitle>
+          <DialogDescription>
+            {isReprintMode ? `Details for invoice ${displaySaleId}` : "Finalize payment and print the receipt."}
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow print:overflow-visible print:max-h-none print:h-auto">
+        <ScrollArea className="flex-grow print:max-h-none print:overflow-visible print:h-auto">
           <div 
             id="bill-content" 
             className={cn(
-                "p-4 sm:p-6 bg-card text-card-foreground",
-                "print:p-2 print:bg-transparent print:text-black print:max-h-none print:overflow-visible"
+              "p-4 bg-card text-card-foreground",
+              "print:p-2 print:bg-transparent print:text-black print:max-h-none print:overflow-visible print:w-full"
             )}
           >
-            <div className="text-center mb-4 sm:mb-6">
-              <div className="flex justify-center mb-1 sm:mb-2 logo-container">
-                 <AppLogo size="sm" className="sm:size-md" />
+            <div className="text-center mb-4 print:mb-2">
+              <div className="flex justify-center mb-1 print:scale-75 print:mb-0">
+                <AppLogo size="sm"/>
               </div>
-              <p className="text-xs sm:text-sm">4/1 Bujjampala, Dankotuwa</p>
-              <p className="text-xs sm:text-sm">Hotline: 077-3383721, 077-1066595</p>
+              <p className="text-xs print:text-[9px]">4/1 Bujjampala, Dankotuwa</p>
+              <p className="text-xs print:text-[9px]">Hotline: 077-3383721, 077-1066595</p>
             </div>
 
-            <Separator className="my-3 sm:my-4 summary-separator"/>
+            <Separator className="my-3 print:my-2 summary-separator"/>
 
-            <div className="text-xs mb-3 sm:mb-4">
-              <p>Date: {transactionDate.toLocaleDateString()} {transactionDate.toLocaleTimeString()}</p>
+            <div className="text-xs print:text-[9px] mb-3 print:mb-2 space-y-1">
+              <p>Date: {format(transactionDate, "PP, p")}</p>
               {displaySaleId && <p>Transaction ID: {displaySaleId}</p>}
               {customerForDisplay && <p>Customer: {customerForDisplay.name} {customerForDisplay.shopName ? `(${customerForDisplay.shopName})` : ''}</p>}
               <p>Served by: {saleForPrinting?.staffName || saleForPrinting?.staffId || 'Staff Member'}</p>
@@ -340,11 +338,11 @@ export function BillDialog({
               {offerWasApplied && <p className="font-semibold text-green-600">Offer: Buy 12 Get 1 Free Applied!</p>}
             </div>
 
-            <Separator className="my-3 sm:my-4 summary-separator"/>
+            <Separator className="my-3 print:my-2 summary-separator"/>
             
-            <h3 className="font-semibold mb-2 text-sm">Order Summary:</h3>
-            <div className="max-h-[150px] overflow-y-auto print:max-h-none print:overflow-visible mb-3 sm:mb-4">
-              <table className="w-full text-xs print:w-full">
+            <h3 className="font-semibold mb-2 text-sm print:text-[10px]">Order Summary:</h3>
+            <div className="max-h-[150px] overflow-y-auto print:max-h-none print:overflow-visible mb-3 print:mb-2">
+              <table className="w-full text-xs print:text-[9px] print:w-full">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-1 font-normal w-[35%]">Item</th>
@@ -373,7 +371,7 @@ export function BillDialog({
                           {item.isOfferItem ? "FREE" : `Rs. ${originalPrice.toFixed(2)}`}
                         </td>
                         <td className="text-right py-1 font-medium">
-                          {item.isOfferItem ? "-" : (hasDiscount ? `Rs. ${item.appliedPrice.toFixed(2)}` : "-")}
+                          {item.isOfferItem ? "-" : (hasDiscount ? `Rs. ${(originalPrice - item.appliedPrice).toFixed(2)}` : "-")}
                         </td>
                         <td className="text-right py-1 font-semibold">
                           {item.isOfferItem ? "Rs. 0.00" : `Rs. ${(item.appliedPrice * item.quantity).toFixed(2)}`}
@@ -385,7 +383,7 @@ export function BillDialog({
               </table>
             </div>
 
-            <div className="space-y-1 text-xs mb-3 sm:mb-4">
+            <div className="space-y-1 text-xs mb-3 print:mb-2">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
                 <span>Rs. {subtotalToDisplay.toFixed(2)}</span>
@@ -397,19 +395,19 @@ export function BillDialog({
                 </div>
               )}
               <Separator className="my-1 summary-separator"/>
-              <div className="flex justify-between font-bold text-base sm:text-lg text-primary">
+              <div className="flex justify-between font-bold text-base print:text-[14px] text-primary">
                 <span>TOTAL AMOUNT DUE:</span>
                 <span>Rs. {totalAmountDueForDisplay.toFixed(2)}</span>
               </div>
             </div>
             
-            <Separator className="my-3 sm:my-4 summary-separator"/>
+            <Separator className="my-3 print:my-2 summary-separator"/>
 
             {!isReprintMode && (
-                <div className="mb-3 sm:mb-4 space-y-3 print:hidden">
+                <div className="mb-3 print:mb-2 space-y-3 print:hidden">
                     <h3 className="font-semibold text-sm">Payment Details:</h3>
                      {outstandingBalance > 0 && !customerForDisplay && !isReprintMode && (
-                        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 sm:p-3 text-destructive text-xs sm:text-sm flex items-start gap-2">
+                        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-xs flex items-start gap-2">
                             <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                             <div>
                             <p className="font-semibold">Customer Required</p>
@@ -419,40 +417,40 @@ export function BillDialog({
                     )}
 
                     {(customerCreditBalance ?? 0) > 0 && (
-                       <div className="border p-2 sm:p-3 rounded-md space-y-2 sm:space-y-3 bg-green-50 dark:bg-green-900/20">
-                          <Label htmlFor="creditToApply" className="text-xs sm:text-sm font-medium text-green-800 dark:text-green-300">
+                       <div className="border p-3 rounded-md space-y-3 bg-green-50 dark:bg-green-900/20">
+                          <Label htmlFor="creditToApply" className="text-sm font-medium text-green-800 dark:text-green-300">
                               Available Credit: {formatCurrency(customerCreditBalance)}
                           </Label>
                           <div className="flex items-center gap-2">
-                              <Input id="creditToApply" type="number" value={creditToApply} onChange={e => setCreditToApply(e.target.value)} placeholder="0.00" className="h-9 sm:h-10 bg-background" min="0" max={Math.min(customerCreditBalance || 0, totalAmountDueForDisplay)} step="0.01" disabled={isProcessing}/>
-                              <Button type="button" variant="secondary" size="sm" className="h-9 sm:h-10" onClick={() => setCreditToApply(Math.min(customerCreditBalance || 0, totalAmountDueForDisplay).toString())}>Apply Max</Button>
+                              <Input id="creditToApply" type="number" value={creditToApply} onChange={e => setCreditToApply(e.target.value)} placeholder="0.00" className="h-10 bg-background" min="0" max={Math.min(customerCreditBalance || 0, totalAmountDueForDisplay)} step="0.01" disabled={isProcessing}/>
+                              <Button type="button" variant="secondary" size="sm" className="h-10" onClick={() => setCreditToApply(Math.min(customerCreditBalance || 0, totalAmountDueForDisplay).toString())}>Apply Max</Button>
                           </div>
                       </div>
                     )}
                     
                     <div>
-                        <Label htmlFor="cashTendered" className="text-xs">Cash Paid (Rs.)</Label>
-                        <Input id="cashTendered" type="number" value={cashTendered} onChange={(e) => setCashTendered(e.target.value)} placeholder="0.00" className="h-9 sm:h-10 mt-1" min="0" step="0.01" disabled={isProcessing}/>
+                        <Label htmlFor="cashTendered" className="text-sm">Cash Paid (Rs.)</Label>
+                        <Input id="cashTendered" type="number" value={cashTendered} onChange={(e) => setCashTendered(e.target.value)} placeholder="0.00" className="h-10 mt-1" min="0" step="0.01" disabled={isProcessing}/>
                     </div>
-                    <div className="border p-2 sm:p-3 rounded-md space-y-2 sm:space-y-3 bg-muted/50">
-                        <p className="text-xs font-medium">Cheque Payment (Optional)</p>
+                    <div className="border p-3 rounded-md space-y-3 bg-muted/50">
+                        <p className="text-sm font-medium">Cheque Payment (Optional)</p>
                         <div>
-                            <Label htmlFor="chequeAmountPaid" className="text-xs">Cheque Amount (Rs.)</Label>
-                            <Input id="chequeAmountPaid" type="number" value={chequeAmountPaid} onChange={(e) => setChequeAmountPaid(e.target.value)} placeholder="0.00" className="h-9 sm:h-10 mt-1 bg-background" min="0" step="0.01" disabled={isProcessing}/>
+                            <Label htmlFor="chequeAmountPaid" className="text-sm">Cheque Amount (Rs.)</Label>
+                            <Input id="chequeAmountPaid" type="number" value={chequeAmountPaid} onChange={(e) => setChequeAmountPaid(e.target.value)} placeholder="0.00" className="h-10 mt-1 bg-background" min="0" step="0.01" disabled={isProcessing}/>
                         </div>
                         <div>
-                            <Label htmlFor="chequeNumber" className="text-xs">Cheque Number</Label>
-                            <Input id="chequeNumber" type="text" value={chequeNumber} onChange={(e) => setChequeNumber(e.target.value)} placeholder="Enter cheque number" className="h-9 sm:h-10 mt-1 bg-background" disabled={isProcessing || parsedChequeAmountPaid <= 0} required={parsedChequeAmountPaid > 0}/>
+                            <Label htmlFor="chequeNumber" className="text-sm">Cheque Number</Label>
+                            <Input id="chequeNumber" type="text" value={chequeNumber} onChange={(e) => setChequeNumber(e.target.value)} placeholder="Enter cheque number" className="h-10 mt-1 bg-background" disabled={isProcessing || parsedChequeAmountPaid <= 0} required={parsedChequeAmountPaid > 0}/>
                         </div>
                         <div>
-                            <Label htmlFor="chequeBank" className="text-xs">Cheque Bank</Label>
-                            <Input id="chequeBank" type="text" value={chequeBank} onChange={(e) => setChequeBank(e.target.value)} placeholder="Enter bank name" className="h-9 sm:h-10 mt-1 bg-background" disabled={isProcessing || parsedChequeAmountPaid <= 0}/>
+                            <Label htmlFor="chequeBank" className="text-sm">Cheque Bank</Label>
+                            <Input id="chequeBank" type="text" value={chequeBank} onChange={(e) => setChequeBank(e.target.value)} placeholder="Enter bank name" className="h-10 mt-1 bg-background" disabled={isProcessing || parsedChequeAmountPaid <= 0}/>
                         </div>
                         <div>
-                            <Label htmlFor="chequeDate" className="text-xs">Cheque Date</Label>
+                            <Label htmlFor="chequeDate" className="text-sm">Cheque Date</Label>
                              <Popover>
                                 <PopoverTrigger asChild>
-                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-9 sm:h-10 mt-1 bg-background", !chequeDate && "text-muted-foreground")} disabled={isProcessing || parsedChequeAmountPaid <= 0}>
+                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal h-10 mt-1 bg-background", !chequeDate && "text-muted-foreground")} disabled={isProcessing || parsedChequeAmountPaid <= 0}>
                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                     {chequeDate ? format(chequeDate, "PPP") : <span>Pick a date</span>}
                                 </Button>
@@ -461,29 +459,29 @@ export function BillDialog({
                             </Popover>
                         </div>
                     </div>
-                     <div className="border p-2 sm:p-3 rounded-md space-y-2 sm:space-y-3 bg-muted/50">
-                        <p className="text-xs font-medium">Bank Transfer (Optional)</p>
+                     <div className="border p-3 rounded-md space-y-3 bg-muted/50">
+                        <p className="text-sm font-medium">Bank Transfer (Optional)</p>
                         <div>
-                            <Label htmlFor="bankTransferAmountPaid" className="text-xs">Transfer Amount (Rs.)</Label>
-                            <Input id="bankTransferAmountPaid" type="number" value={bankTransferAmountPaid} onChange={(e) => setBankTransferAmountPaid(e.target.value)} placeholder="0.00" className="h-9 sm:h-10 mt-1 bg-background" min="0" step="0.01" disabled={isProcessing}/>
+                            <Label htmlFor="bankTransferAmountPaid" className="text-sm">Transfer Amount (Rs.)</Label>
+                            <Input id="bankTransferAmountPaid" type="number" value={bankTransferAmountPaid} onChange={(e) => setBankTransferAmountPaid(e.target.value)} placeholder="0.00" className="h-10 mt-1 bg-background" min="0" step="0.01" disabled={isProcessing}/>
                         </div>
                         <div>
-                            <Label htmlFor="bankTransferBankName" className="text-xs">Bank Name</Label>
-                            <Input id="bankTransferBankName" type="text" value={bankTransferBankName} onChange={(e) => setBankTransferBankName(e.target.value)} placeholder="Enter bank name" className="h-9 sm:h-10 mt-1 bg-background" disabled={isProcessing || parsedBankTransferAmountPaid <= 0}/>
+                            <Label htmlFor="bankTransferBankName" className="text-sm">Bank Name</Label>
+                            <Input id="bankTransferBankName" type="text" value={bankTransferBankName} onChange={(e) => setBankTransferBankName(e.target.value)} placeholder="Enter bank name" className="h-10 mt-1 bg-background" disabled={isProcessing || parsedBankTransferAmountPaid <= 0}/>
                         </div>
                         <div>
-                            <Label htmlFor="bankTransferReference" className="text-xs">Reference Number</Label>
-                            <Input id="bankTransferReference" type="text" value={bankTransferReference} onChange={(e) => setBankTransferReference(e.target.value)} placeholder="Enter reference number" className="h-9 sm:h-10 mt-1 bg-background" disabled={isProcessing || parsedBankTransferAmountPaid <= 0}/>
+                            <Label htmlFor="bankTransferReference" className="text-sm">Reference Number</Label>
+                            <Input id="bankTransferReference" type="text" value={bankTransferReference} onChange={(e) => setBankTransferReference(e.target.value)} placeholder="Enter reference number" className="h-10 mt-1 bg-background" disabled={isProcessing || parsedBankTransferAmountPaid <= 0}/>
                         </div>
                     </div>
                 </div>
             )}
 
-            <div className="space-y-1 text-sm mb-3 sm:mb-4">
-              <h4 className="font-semibold text-sm sm:text-base mb-2 mt-2">Final Summary:</h4>
+            <div className="space-y-1 text-sm mb-3 print:mb-2">
+              <h4 className="font-semibold text-sm print:text-[10px] mb-2 mt-2">Final Summary:</h4>
               
               {isReprintMode ? (
-                  <div className="text-xs space-y-1">
+                  <div className="text-xs print:text-[9px] space-y-1">
                       {(saleForPrinting?.paidAmountCash ?? 0) > 0 && <div className="flex justify-between"><span>Initial Cash:</span><span>{formatCurrency(saleForPrinting!.paidAmountCash!)}</span></div>}
                       {(saleForPrinting?.paidAmountCheque ?? 0) > 0 && <div className="flex justify-between"><span>Initial Cheque:</span><span>{formatCurrency(saleForPrinting!.paidAmountCheque!)} (#{saleForPrinting!.chequeDetails?.number})</span></div>}
                       {(saleForPrinting?.paidAmountBankTransfer ?? 0) > 0 && <div className="flex justify-between"><span>Initial Bank Transfer:</span><span>{formatCurrency(saleForPrinting!.paidAmountBankTransfer!)}</span></div>}
@@ -497,7 +495,7 @@ export function BillDialog({
                       ))}
                   </div>
               ) : (
-                  <div className="text-xs space-y-1">
+                  <div className="text-xs print:text-[9px] space-y-1">
                       {parsedCreditApplied > 0 && <div className="flex justify-between text-green-600"><span>Credit Applied:</span><span>- {formatCurrency(parsedCreditApplied)}</span></div>}
                       {parsedCashTendered > 0 && <div className="flex justify-between"><span>Cash Tendered:</span><span>{formatCurrency(parsedCashTendered)}</span></div>}
                       {parsedChequeAmountPaid > 0 && <div className="flex justify-between"><span>Cheque Paid:</span><span>{formatCurrency(parsedChequeAmountPaid)}</span></div>}
@@ -517,14 +515,14 @@ export function BillDialog({
               </div>
             </div>
 
-            <p className="text-center text-xs mt-4 sm:mt-6">Thank you for your purchase!</p>
-            <p className="text-center text-xs">Please come again.</p>
+            <p className="text-center text-xs print:text-[9px] mt-4 print:mt-2">Thank you for your purchase!</p>
+            <p className="text-center text-xs print:text-[9px]">Please come again.</p>
           </div>
         </ScrollArea>
 
-        <DialogFooter className="mt-auto p-4 sm:p-6 border-t print:hidden flex justify-end gap-2">
-           <Button variant="outline" size="sm" className="sm:size-default h-9 sm:h-10" onClick={() => onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
-           <Button size="sm" className="sm:size-default h-9 sm:h-10" onClick={handlePrimaryAction} disabled={isPrimaryButtonDisabled || isProcessing}>
+        <DialogFooter className="mt-auto p-4 border-t print:hidden flex justify-end gap-2">
+           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
+           <Button onClick={handlePrimaryAction} disabled={isPrimaryButtonDisabled || isProcessing}>
              {isProcessing ? <><Banknote className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : <><Printer className="mr-2 h-4 w-4" /> {isReprintMode ? "Print Receipt" : "Confirm & Print"}</>}
            </Button>
         </DialogFooter>
