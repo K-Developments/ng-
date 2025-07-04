@@ -131,8 +131,7 @@
   /* Ensure Radix Dialog Content expands for printing */
   [data-radix-dialog-content] {
     position: static !important;
-    width: auto !important; /* Let content decide width */
-    max-width: none !important;
+    width: 100% !important; /* Let content decide width */
     height: auto !important;
     max-height: none !important;
     border: none !important;
@@ -150,7 +149,7 @@
       overflow-y: visible !important;
       height: auto !important;
       display: block !important;
-      width: auto !important; /* Allow content to define width during print */
+      width: 100% !important; /* Allow content to define width during print */
   }
   
   /* --- 80mm Receipt Specific Styles --- */
@@ -161,8 +160,7 @@
     overflow: visible !important;
     box-shadow: none !important;
     border: none !important;
-    width: 72mm !important; /* Printable area for 80mm paper */
-    padding: 2mm !important;
+    width: 80mm !important; /* Printable area for 80mm paper */
     margin: 0 !important;
     background-color: white !important;
     color: black !important;
@@ -183,7 +181,7 @@
   #bill-content h2, #bill-content h3, #bill-content p, #bill-content div,
   #return-receipt-content h2, #return-receipt-content h3, #return-receipt-content p, #return-receipt-content div,
   #payment-receipt-content h2, #payment-receipt-content h3, #payment-receipt-content p, #payment-receipt-content div {
-      font-size: 9pt !important;
+      font-size: 10pt !important;
       line-height: 1.3 !important;
   }
 
@@ -231,7 +229,7 @@
   }
 
   .printable-report-container table {
-    width: 100% !important;
+    width: 110% !important;
     border-collapse: collapse !important;
     table-layout: auto;
   }
