@@ -161,7 +161,7 @@
     overflow: visible !important;
     box-shadow: none !important;
     border: none !important;
-    width: 72mm !important; /* Printable area for 80mm paper */
+    width: 78mm !important; /* Printable area for 80mm paper */
     padding: 2mm !important;
     margin: 0 !important;
     background-color: white !important;
