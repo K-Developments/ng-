@@ -78,8 +78,8 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
           <div 
             id="return-receipt-content" 
             className={cn(
-              "p-4 bg-card text-card-foreground print:p-2 print:bg-transparent print:text-black",
-              "print:max-h-none print:overflow-visible print:w-[72mm] print:mx-auto"
+              "p-4 bg-card text-card-foreground",
+              "print:p-2 print:bg-transparent print:text-black print:max-h-none print:overflow-visible"
             )}
           >
             <div className="text-center mb-4 print:mb-2">
