@@ -220,7 +220,7 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
                 </div>
               )}
               {(refundAmount && refundAmount > 0) && (
-                <div className="flex justify-between text-green-700">
+                <div className="flex justify-between text-green-700 pb-2">
                   <span className="text-muted-foreground">Credited to Account:</span>
                   <span>{formatCurrency(refundAmount)}</span>
                 </div>
