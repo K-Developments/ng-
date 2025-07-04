@@ -136,7 +136,7 @@
   #bill-content,
   #return-receipt-content,
   #payment-receipt-content {
-    width: 72mm !important;
+    width: 78mm !important;
     margin: 0 auto !important; /* Center the receipt on the page */
     padding: 2mm !important;
     font-size: 9pt !important;
