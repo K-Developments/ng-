@@ -226,8 +226,8 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
                 </div>
               )}
             </div>
-            
-            <p className="text-center text-xs print:text-[9px] mt-6 print:mt-6">Thank you!</p>
+             <div className="flex-grow"></div> {/* This will push the thank you note down */}
+  <p className="text-center text-xs print:text-[9px] mt-6 print:mt-6">Thank you!</p>
           </div>
         </ScrollArea>
         <div className="p-4 border-t print:hidden flex justify-end gap-2">
