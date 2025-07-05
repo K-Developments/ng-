@@ -162,7 +162,7 @@
   #return-receipt-content h2, #return-receipt-content h3, #return-receipt-content p, #return-receipt-content div,
   #payment-receipt-content h2, #payment-receipt-content h3, #payment-receipt-content p, #payment-receipt-content div {
       font-size: 9.5pt !important;
-      line-height: 1.5 !important;
+      line-height: 1.4 !important;
   }
 
   /* Table specific styles for receipts */
