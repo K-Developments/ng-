@@ -1,6 +1,6 @@
 "use client";
 
-import type { CartItem, Customer, Sale, ChequeInfo, BankTransferInfo } from "@/lib/types";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +16,6 @@ import { Separator } from "@/components/ui/separator";
 import { AppLogo } from "@/components/AppLogo";
 import { Calendar as CalendarIcon, Landmark, Printer, Wallet, AlertTriangle, Gift, Newspaper, Banknote, FileText, CreditCard, Building } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -315,8 +314,8 @@ export function BillDialog({
           <div 
             id="bill-content" 
             className={cn(
-              "p-4 bg-card text-card-foreground",
-              "print:p-2 print:bg-transparent print:text-black print:max-h-none print:overflow-visible print:w-full"
+              "p-4 bg-card text-card-foreground invoice-print",
+              "print:p-2 print:bg-transparent print:text-black print:w-full"
             )}
           >
             <div className="text-center mb-4 print:mb-2">
@@ -342,14 +341,14 @@ export function BillDialog({
             
             <h3 className="font-semibold mb-2 text-sm print:text-[10px]">Order Summary:</h3>
             <div className="max-h-[150px] overflow-y-auto print:max-h-none print:overflow-visible mb-3 print:mb-2">
-              <table className="w-full text-xs print:text-[9px] print:w-full">
+              <table className="w-full text-xs print:text-[9px] invoice-table">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-1 font-normal w-[35%]">Item</th>
-                    <th className="text-center py-1 font-normal w-[10%]">Qty</th>
-                    <th className="text-right py-1 font-normal w-[18%]">Price</th>
-                    <th className="text-right py-1 font-normal w-[18%]">Disc.</th>
-                    <th className="text-right py-1 font-normal w-[19%]">Total</th>
+                  <tr>
+                    <th className="text-left py-1 w-[35%]">Item</th>
+                    <th className="text-center py-1 w-[10%]">Qty</th>
+                    <th className="text-right py-1 w-[18%]">Price</th>
+                    <th className="text-right py-1 w-[18%]">Disc.</th>
+                    <th className="text-right py-1 w-[19%]">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -359,8 +358,7 @@ export function BillDialog({
 
                     return (
                       <tr 
-                        key={`${item.id}-${item.saleType}-${item.isOfferItem ? 'offer' : 'paid'}-${index}`} 
-                        className="border-b border-dashed"
+                        key={`${item.id}-${item.saleType}-${item.isOfferItem ? 'offer' : 'paid'}-${index}`}
                       >
                         <td className="py-1 break-words print:break-all">
                           {item.name}
