@@ -8,7 +8,7 @@ export function AppLogo({ size = "md" }: { size?: "sm" | "md" | "lg" | "iconOnly
   const sizeMap = {
     sm: { class: "h-6 w-6", width: 24, height: 24 },
     md: { class: "h-8 w-8", width: 32, height: 32 },
-    lg: { class: "h-10 w-10", width: 24, height: 24 },
+    lg: { class: "h-10 w-10", width: 40, height: 40 },
     iconOnly: { class: "h-7 w-7", width: 28, height: 28 },
   };
 
@@ -20,8 +20,8 @@ export function AppLogo({ size = "md" }: { size?: "sm" | "md" | "lg" | "iconOnly
       alt="N Group Products Logo"
       width={width}
       height={height}
-      className="object-cover "
-      priority 
+      className="object-contain"
+      priority // Ensures the logo loads quickly, especially on the login page
     />
   );
 
@@ -40,7 +40,7 @@ export function AppLogo({ size = "md" }: { size?: "sm" | "md" | "lg" | "iconOnly
       </div>
       <span 
         className={cn(
-            `font-headline font-bold text-primary`,
+            `font-headline font-bold text-primary app-logo-text`,
             size === 'sm' && 'text-xl',
             size === 'md' && 'text-2xl',
             size === 'lg' && 'text-3xl'
