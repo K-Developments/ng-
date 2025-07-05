@@ -101,7 +101,6 @@
 @media print {
   body {
     background: white;
-    position:relative;
   }
   
   /* --- Universal Print Isolation --- */
@@ -123,7 +122,6 @@
   #return-receipt-content, #return-receipt-content *,
   #payment-receipt-content, #payment-receipt-content * {
     visibility: visible;
-    overflow:visible;
   }
   
   /*
@@ -134,16 +132,16 @@
   #bill-content, 
   #return-receipt-content, 
   #payment-receipt-content {
-    position:absolute;
-    z-index:111;
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
     padding: 2mm; /* Give a small printable margin */
-    width: 100%; 
-    height:100%;/* Standard width for 80mm paper */
+    width: 72mm; /* Standard width for 80mm paper */
     font-size: 9pt !important;
     font-family: 'Courier New', Courier, monospace !important;
     background: white !important;
     color: black !important;
-    overflow:visible;
   }
 
   .logo-container {
@@ -163,7 +161,6 @@
   #payment-receipt-content * {
       font-size: 9pt !important;
       line-height: 1.3 !important;
-    overflow:visible;
   }
 
   /* Force tables inside receipts to behave correctly and wrap text */
@@ -174,7 +171,6 @@
     border-collapse: collapse !important;
     table-layout: fixed !important; /* This is crucial for preventing overflow */
     font-size: 8pt !important;
-    
   }
 
   #bill-content th, #bill-content td,
@@ -195,7 +191,6 @@
    .printable-report-container,
    .printable-report-container * {
     visibility: visible !important;
-     overflow:visible !important;
   }
    .printable-report-container {
     position: static !important;
@@ -204,8 +199,6 @@
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
-     height:100%;
-     overflow:visible !important;
   }
    .printable-report-container table {
     width: 100% !important;
