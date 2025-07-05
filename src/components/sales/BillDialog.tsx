@@ -77,22 +77,15 @@ export function BillDialog({
   const [creditToApply, setCreditToApply] = useState("0");
   const { toast } = useToast();
 
-  const handlePrintAndClose = useCallback(() => {
-    if (finalSaleData) {
-      window.print();
-      onOpenChange(false);
-      setFinalSaleData(null); // Reset for next time
-    }
-  }, [finalSaleData, onOpenChange]);
-  
   useEffect(() => {
     if (finalSaleData) {
-        window.print();
-        setIsProcessing(false);
-        onOpenChange(false); // Close dialog after successful print command
-        setFinalSaleData(null);
+      window.print();
+      setIsProcessing(false);
+      // DO NOT close the dialog here. The print command is async.
+      // The user will close it manually after printing.
+      setFinalSaleData(null);
     }
-  }, [finalSaleData, onOpenChange]);
+  }, [finalSaleData]);
 
   const saleForPrinting = finalSaleData || existingSaleData;
   const isReprintMode = !!existingSaleData;
@@ -137,7 +130,7 @@ export function BillDialog({
   useEffect(() => {
     if (isOpen) {
       setIsProcessing(false);
-      // Do not reset finalSaleData here, wait for useEffect to handle print
+      setFinalSaleData(null); 
       setCreditToApply("0");
       if (existingSaleData) {
         setCashTendered("");
@@ -218,6 +211,7 @@ export function BillDialog({
   const handlePrimaryAction = async () => {
     if (isReprintMode) {
       window.print();
+      // onOpenChange(false); // DO NOT CLOSE DIALOG, as it removes the content before printing can finish.
       return;
     }
 
@@ -311,7 +305,7 @@ export function BillDialog({
     >
       <div className="text-center mb-4">
         <div className="flex justify-center mb-1 logo-container">
-            <AppLogo size="md"/>
+            <AppLogo size="sm"/>
         </div>
         <p className="text-xs">4/1 Bujjampala, Dankotuwa</p>
         <p className="text-xs">Hotline: 077-3383721, 077-1066595</p>
