@@ -151,8 +151,9 @@
   }
   
   .logo-container .app-logo-text {
-    font-size: 20pt !important;
+    font-size: 40pt !important;
     font-weight: bold !important;
+    padding-bottom:10px
   }
 
   .summary-separator {
