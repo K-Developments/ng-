@@ -65,7 +65,7 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
       <DialogContent className={cn(
         "sm:max-w-lg flex flex-col p-0 print:p-0",
         "print:shadow-none print:border-none print:max-w-none print:max-h-none print:m-0 print:h-auto print:overflow-visible",
-        isOpen ? "max-h-[90vh]" : ""
+        isOpen ? "max-h-[95vh]" : ""
       )}>
         <DialogHeader className="print:hidden px-6 pt-6">
           <DialogTitle className="font-headline text-xl">Return & Exchange Receipt</DialogTitle>
