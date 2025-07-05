@@ -106,11 +106,7 @@
   .toaster-wrapper-for-print-hide {
     display: none !important;
   }
-    #return-receipt-content p { /* Targets the thank you message */
- 
-    text-align: center;
-    margin-top: 10px !important;
-  }
+    
   
   /* Reset the dialog's position and style to be a static block for printing */
   .printable-content {
