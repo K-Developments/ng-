@@ -122,6 +122,7 @@
   #return-receipt-content, #return-receipt-content *,
   #payment-receipt-content, #payment-receipt-content * {
     visibility: visible;
+    overflow:visible;
   }
   
   /*
