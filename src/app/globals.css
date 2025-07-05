@@ -101,6 +101,7 @@
 @media print {
   body {
     background: white;
+    position:relative;
   }
   
   /* --- Universal Print Isolation --- */
@@ -122,7 +123,6 @@
   #return-receipt-content, #return-receipt-content *,
   #payment-receipt-content, #payment-receipt-content * {
     visibility: visible;
-    overflow:visible;
   }
   
   /*
@@ -133,8 +133,10 @@
   #bill-content, 
   #return-receipt-content, 
   #payment-receipt-content {
+    position:absolute;
+    z-index:111;
     padding: 2mm; /* Give a small printable margin */
-    width: 72mm; /* Standard width for 80mm paper */
+    width: 100%; /* Standard width for 80mm paper */
     font-size: 9pt !important;
     font-family: 'Courier New', Courier, monospace !important;
     background: white !important;
