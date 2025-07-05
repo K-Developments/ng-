@@ -136,7 +136,8 @@
     position:absolute;
     z-index:111;
     padding: 2mm; /* Give a small printable margin */
-    width: 100%; /* Standard width for 80mm paper */
+    width: 100%; 
+    height:100%;/* Standard width for 80mm paper */
     font-size: 9pt !important;
     font-family: 'Courier New', Courier, monospace !important;
     background: white !important;
