@@ -132,7 +132,7 @@
   #return-receipt-content, 
   #payment-receipt-content {
   
-    padding: 0 2mm 2mm; /* Give a small printable margin, but not at the top */
+    padding: 0 1mm 1mm; /* Give a small printable margin, but not at the top */
     width: 72mm; /* Standard width for 80mm paper */
     height: 100%;
     font-size: 8pt !important;
@@ -142,6 +142,7 @@
     margin: 0;
     border: none !important;
     box-shadow: inherit !important;
+    box-sizing:border-box !important;
   }
 
   .logo-container {
