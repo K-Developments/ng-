@@ -166,7 +166,7 @@
   #bill-content *,
   #return-receipt-content *,
   #payment-receipt-content * {
-      font-size: 9pt !important;
+      font-size: 8pt !important;
       line-height: 1.3 !important;
   }
 
@@ -191,7 +191,7 @@
   #bill-content thead tr,
   #return-receipt-content thead tr,
   #payment-receipt-content thead tr {
-      border-bottom: 1px solid black !important;
+      border-bottom: 1px dashed black !important;
   }
 
   /* --- Full Page Report Styles --- */
@@ -214,7 +214,7 @@
   }
    .printable-report-container th, 
    .printable-report-container td {
-    border: 1px dashed #ccc !important;
+    border: 1px solid #ccc !important;
     padding: 4px !important;
     font-size: 8pt !important;
     word-break: break-word;
