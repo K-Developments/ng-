@@ -150,6 +150,7 @@
     position: absolute !important;
     top: 0 !important;
     bottom: 0 !important;
+    z-index:1111;
   }
 
   .logo-container {
