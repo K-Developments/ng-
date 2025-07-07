@@ -140,12 +140,13 @@
     height: 100%;
     font-size: 8pt !important;
     font-family: 'Courier New', Courier, monospace !important;
-    background: transparent !important;
+    background-color: transparent !important;
     color: black !important;
     margin: 0 !important;
     border: inherit !important;
     box-shadow: inherit !important;
-    box-sizing:border-box !important;
+    box-sizing: border-box !important;
+    background: invisible !important;
   }
 
   .logo-container {
