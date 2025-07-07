@@ -147,9 +147,7 @@
     box-shadow: inherit !important;
     box-sizing: border-box !important;
     background: invisible !important;
-    position: absolute !important;
-    top: 0 !important;
-    bottom: 0 !important;
+    position: relative !important;
     z-index:1111;
   }
 
