@@ -136,7 +136,7 @@
   #payment-receipt-content {
     overflow-x: hidden !important;
     padding: 0 2mm 2mm; /* Give a small printable margin, but not at the top */
-    max-width: 78mm; /* Standard width for 80mm paper */
+    width: 78mm; /* Standard width for 80mm paper */
     height: 100%;
     font-size: 8pt !important;
     font-family: 'Courier New', Courier, monospace !important;
