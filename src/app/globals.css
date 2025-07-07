@@ -131,12 +131,7 @@
   #bill-content, 
   #return-receipt-content, 
   #payment-receipt-content {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    transform: translateX(-50%);
-    bottom:0;
-    z-index: 111;
+  
     padding: 0 2mm 2mm; /* Give a small printable margin, but not at the top */
     width: 72mm; /* Standard width for 80mm paper */
     height: 100%;
