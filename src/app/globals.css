@@ -135,14 +135,14 @@
   #return-receipt-content, 
   #payment-receipt-content {
     overflow-x: hidden !important;
-    padding: 0 2mm 2mm; /* Give a small printable margin, but not at the top */
-    width: 78mm; /* Standard width for 80mm paper */
+    padding: 0 1mm 1mm !important; /* Give a small printable margin, but not at the top */
+    width: 72mm; /* Standard width for 80mm paper */
     height: 100%;
     font-size: 8pt !important;
     font-family: 'Courier New', Courier, monospace !important;
     background: transparent !important;
     color: black !important;
-    margin: 0;
+    margin: 0 !important;
     border: inherit !important;
     box-shadow: inherit !important;
     box-sizing:border-box !important;
