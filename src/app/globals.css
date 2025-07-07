@@ -140,7 +140,7 @@
     height: 100%;
     font-size: 8pt !important;
     font-family: 'Courier New', Courier, monospace !important;
-    background: white !important;
+    background: transparent !important;
     color: black !important;
     margin: 0;
     border: inherit !important;
