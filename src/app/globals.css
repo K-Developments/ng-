@@ -101,7 +101,10 @@
 @media print {
   body {
     background: white;
-    position:relative;
+    position: relative;
+  }
+  button {
+    display: none !important;
   }
   
   /* --- Universal Print Isolation --- */
