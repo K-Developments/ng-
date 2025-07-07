@@ -151,7 +151,7 @@
   }
   
   .logo-container .app-logo-text {
-    font-size: 40pt !important;
+    font-size: 50pt !important;
     font-weight: bold !important;
     padding-bottom:10px
   }
@@ -191,7 +191,7 @@
   #bill-content thead tr,
   #return-receipt-content thead tr,
   #payment-receipt-content thead tr {
-      border-bottom: 1px dashed black !important;
+      border-bottom: 1px solid black !important;
   }
 
   /* --- Full Page Report Styles --- */
