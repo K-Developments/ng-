@@ -112,7 +112,7 @@
 
   /* By default, hide everything within the body during print */
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
 
   /*
@@ -140,6 +140,8 @@
     background: white !important;
     color: black !important;
     margin: 0;
+    border: none !important;
+    box-shadow: inherit !important;
   }
 
   .logo-container {
