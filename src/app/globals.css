@@ -166,7 +166,7 @@
   #bill-content *,
   #return-receipt-content *,
   #payment-receipt-content * {
-      font-size: 8pt !important;
+      font-size: 9pt !important;
       line-height: 1.3 !important;
   }
 
@@ -177,7 +177,7 @@
     width: 100% !important; /* Take full width of the 72mm container */
     border-collapse: collapse !important;
     table-layout: fixed !important; /* This is crucial for preventing overflow */
-    font-size: 8pt !important;
+    font-size: 9pt !important;
   }
 
   #bill-content th, #bill-content td,
@@ -216,7 +216,7 @@
    .printable-report-container td {
     border: 1px solid #ccc !important;
     padding: 4px !important;
-    font-size: 8pt !important;
+    font-size: 9pt !important;
     word-break: break-word;
   }
    .printable-report-container thead {
