@@ -134,8 +134,8 @@
   #bill-content, 
   #return-receipt-content, 
   #payment-receipt-content {
-  
-    padding: 0 1mm 1mm; /* Give a small printable margin, but not at the top */
+    overflow-x: hidden !important;
+    padding: 0 2mm 2mm; /* Give a small printable margin, but not at the top */
     width: 72mm; /* Standard width for 80mm paper */
     height: 100%;
     font-size: 8pt !important;
@@ -143,7 +143,7 @@
     background: white !important;
     color: black !important;
     margin: 0;
-    border: none !important;
+    border: inherit !important;
     box-shadow: inherit !important;
     box-sizing:border-box !important;
   }
