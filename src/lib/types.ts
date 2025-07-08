@@ -755,6 +755,7 @@ export interface FullReportEntry {
   productCategory: Product["category"];
   quantity: number;
   appliedPrice: number;
+  discountOnItem?: number;
   lineTotal: number;
   saleType?: 'retail' | 'wholesale';
   paymentSummary?: Sale["paymentSummary"];
@@ -782,6 +783,7 @@ export interface DayEndReportSummary {
   reportDate: Date;
   totalTransactions: number;
   grossSalesValue: number;
+  totalDiscountsToday?: number;
   refundsForTodaySales: number;
   refundsForPastSales: number;
   netSalesValue: number;
