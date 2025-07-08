@@ -85,10 +85,8 @@ export function PaymentDialog({ isOpen, onOpenChange, sale, onSuccess }: Payment
   useEffect(() => {
     if (paymentReceiptData) {
         window.print();
-        onSuccess();
-        onOpenChange(false);
     }
-  }, [paymentReceiptData, onSuccess, onOpenChange]);
+  }, [paymentReceiptData]);
 
   const handleConfirmPayment = async () => {
     if (!sale) return;
@@ -154,6 +152,13 @@ export function PaymentDialog({ isOpen, onOpenChange, sale, onSuccess }: Payment
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && paymentReceiptData) {
+        onSuccess();
+    }
+    onOpenChange(open);
+  };
+
   const formatCurrency = (val: number) => `Rs. ${val.toFixed(2)}`;
   
   const receipt = paymentReceiptData || {
@@ -173,7 +178,7 @@ export function PaymentDialog({ isOpen, onOpenChange, sale, onSuccess }: Payment
             <AppLogo size="md"/>
           </div>
           <p className="text-xs">4/1 Bujjampala, Dankotuwa</p>
-          <p className="text-xs">Hotline: 077-3383721, 077-1066595</p>
+          <p className="text-xs">Hotline: 077-1066595, 077-6106616</p>
         </div>
         <h2 className="text-center font-bold text-lg mb-4">PAYMENT RECEIPT</h2>
           <Separator className="my-2 summary-separator"/>
@@ -204,7 +209,7 @@ export function PaymentDialog({ isOpen, onOpenChange, sale, onSuccess }: Payment
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className={cn("sm:max-w-lg flex flex-col max-h-[90vh] printable-content")}>
         <div className="hidden print:block">
           {receiptContent}
@@ -266,7 +271,7 @@ export function PaymentDialog({ isOpen, onOpenChange, sale, onSuccess }: Payment
                 </div>
             </ScrollArea>
              <DialogFooter className="pt-4 border-t">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
                 <Button onClick={handleConfirmPayment} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Printer className="mr-2 h-4 w-4" />}
                     Confirm & Print Receipt
