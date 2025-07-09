@@ -20,92 +20,80 @@ export async function POST(request: NextRequest) {
   try {
     const saleDataFromClient = await request.json();
 
-    // Basic validation for core sale structure
+    // --- Start Aggressive Validation ---
     if (!saleDataFromClient || !Array.isArray(saleDataFromClient.items) || saleDataFromClient.items.length === 0) {
       return NextResponse.json({ error: 'Invalid sale data: Items are missing or empty.' }, { status: 400 });
     }
-    if (typeof saleDataFromClient.totalAmount !== 'number' || 
-        typeof saleDataFromClient.totalAmountPaid !== 'number' ||
-        typeof saleDataFromClient.outstandingBalance !== 'number' ||
-        typeof saleDataFromClient.paymentSummary !== 'string') {
-      return NextResponse.json({ error: 'Invalid sale data: Missing core payment fields (totalAmount, totalAmountPaid, outstandingBalance, paymentSummary).' }, { status: 400 });
+    
+    const requiredNumericFields = ['subTotal', 'discountAmount', 'totalAmount', 'totalAmountPaid', 'outstandingBalance'];
+    for (const field of requiredNumericFields) {
+      if (typeof saleDataFromClient[field] !== 'number') {
+        return NextResponse.json({ error: `Invalid sale data: Field '${field}' is missing or not a number.` }, { status: 400 });
+      }
     }
 
-    // Validate payment breakdown
-    if (saleDataFromClient.paidAmountCash !== undefined && typeof saleDataFromClient.paidAmountCash !== 'number') {
-        return NextResponse.json({ error: 'Invalid cash payment amount.' }, { status: 400 });
+    if (typeof saleDataFromClient.paymentSummary !== 'string') {
+      return NextResponse.json({ error: 'Invalid sale data: Missing payment summary string.' }, { status: 400 });
     }
-    if (saleDataFromClient.paidAmountCheque !== undefined && typeof saleDataFromClient.paidAmountCheque !== 'number') {
-        return NextResponse.json({ error: 'Invalid cheque payment amount.' }, { status: 400 });
-    }
-    if (saleDataFromClient.paidAmountBankTransfer !== undefined && typeof saleDataFromClient.paidAmountBankTransfer !== 'number') {
-        return NextResponse.json({ error: 'Invalid bank transfer payment amount.' }, { status: 400 });
-    }
-
-    if (saleDataFromClient.paidAmountCheque > 0 && (!saleDataFromClient.chequeDetails || !saleDataFromClient.chequeDetails.number)) {
-        return NextResponse.json({ error: 'Cheque number is required for cheque payments.' }, { status: 400 });
-    }
-    if (saleDataFromClient.chequeDetails && saleDataFromClient.chequeDetails.date && isNaN(new Date(saleDataFromClient.chequeDetails.date).getTime())) {
-        return NextResponse.json({ error: 'Invalid cheque date provided.' }, { status: 400 });
-    }
-    if (saleDataFromClient.paidAmountBankTransfer > 0 && !saleDataFromClient.bankTransferDetails) {
-        // Basic check, can be more granular (e.g. require bankName or referenceNumber)
-        return NextResponse.json({ error: 'Bank transfer details are required for bank transfer payments.' }, { status: 400 });
-    }
-
+    // --- End Validation ---
 
     const saleDate = saleDataFromClient.saleDate ? new Date(saleDataFromClient.saleDate) : new Date();
     
-    let chequeDetailsForDb: ChequeInfo | undefined = undefined;
-    if (saleDataFromClient.chequeDetails) {
-        chequeDetailsForDb = {
-            number: saleDataFromClient.chequeDetails.number,
-            bank: saleDataFromClient.chequeDetails.bank,
-            date: saleDataFromClient.chequeDetails.date ? new Date(saleDataFromClient.chequeDetails.date) : undefined,
-            amount: saleDataFromClient.chequeDetails.amount,
-        };
-    }
-
-    let bankTransferDetailsForDb: BankTransferInfo | undefined = undefined;
-    if (saleDataFromClient.bankTransferDetails) {
-        bankTransferDetailsForDb = {
-            bankName: saleDataFromClient.bankTransferDetails.bankName,
-            referenceNumber: saleDataFromClient.bankTransferDetails.referenceNumber,
-            amount: saleDataFromClient.bankTransferDetails.amount,
-        };
-    }
-
-
-    const salePayload = {
-      customerId: saleDataFromClient.customerId,
-      customerName: saleDataFromClient.customerName,
-      items: saleDataFromClient.items as CartItem[],
+    // --- Start Definitive Defensive Payload Construction ---
+    const payload: Omit<Sale, 'id'> = {
+      // These are now guaranteed to be present and of the correct type by validation above
+      items: saleDataFromClient.items,
       subTotal: saleDataFromClient.subTotal,
-      discountPercentage: saleDataFromClient.discountPercentage,
       discountAmount: saleDataFromClient.discountAmount,
-      totalAmount: saleDataFromClient.totalAmount, 
-
-      paidAmountCash: saleDataFromClient.paidAmountCash,
-      paidAmountCheque: saleDataFromClient.paidAmountCheque,
-      chequeDetails: chequeDetailsForDb,
-      paidAmountBankTransfer: saleDataFromClient.paidAmountBankTransfer,
-      bankTransferDetails: bankTransferDetailsForDb,
+      totalAmount: saleDataFromClient.totalAmount,
       totalAmountPaid: saleDataFromClient.totalAmountPaid,
       outstandingBalance: saleDataFromClient.outstandingBalance,
-      initialOutstandingBalance: saleDataFromClient.outstandingBalance,
-      changeGiven: saleDataFromClient.changeGiven,
       paymentSummary: saleDataFromClient.paymentSummary,
       
-      offerApplied: saleDataFromClient.offerApplied || false,
+      // These have safe defaults
       saleDate: saleDate,
       staffId: saleDataFromClient.staffId || "staff001",
-      staffName: saleDataFromClient.staffName,
-      vehicleId: saleDataFromClient.vehicleId, 
+      offerApplied: saleDataFromClient.offerApplied || false,
+      discountPercentage: saleDataFromClient.discountPercentage || 0,
     };
-
-    const saleId = await addSale(salePayload);
     
-    return NextResponse.json({ id: saleId, ...salePayload, saleDate: saleDate.toISOString() }, { status: 201 });
+    // Add optional fields ONLY if they exist and are not undefined
+    if (saleDataFromClient.customerId !== undefined) payload.customerId = saleDataFromClient.customerId;
+    if (saleDataFromClient.customerName !== undefined) payload.customerName = saleDataFromClient.customerName;
+    if (saleDataFromClient.customerShopName !== undefined) payload.customerShopName = saleDataFromClient.customerShopName;
+    if (saleDataFromClient.staffName !== undefined) payload.staffName = saleDataFromClient.staffName;
+    if (saleDataFromClient.vehicleId !== undefined) payload.vehicleId = saleDataFromClient.vehicleId;
+    if (saleDataFromClient.paidAmountCash !== undefined) payload.paidAmountCash = saleDataFromClient.paidAmountCash;
+    if (saleDataFromClient.paidAmountCheque !== undefined) payload.paidAmountCheque = saleDataFromClient.paidAmountCheque;
+    if (saleDataFromClient.paidAmountBankTransfer !== undefined) payload.paidAmountBankTransfer = saleDataFromClient.paidAmountBankTransfer;
+    if (saleDataFromClient.creditUsed !== undefined) payload.creditUsed = saleDataFromClient.creditUsed;
+    if (saleDataFromClient.changeGiven !== undefined) payload.changeGiven = saleDataFromClient.changeGiven;
+
+    if (payload.outstandingBalance > 0) {
+      payload.initialOutstandingBalance = payload.outstandingBalance;
+    }
+
+    if (saleDataFromClient.chequeDetails) {
+      const details: ChequeInfo = {};
+      if (saleDataFromClient.chequeDetails.number) details.number = saleDataFromClient.chequeDetails.number;
+      if (saleDataFromClient.chequeDetails.bank) details.bank = saleDataFromClient.chequeDetails.bank;
+      if (saleDataFromClient.chequeDetails.date) details.date = new Date(saleDataFromClient.chequeDetails.date);
+      if (saleDataFromClient.chequeDetails.amount !== undefined) details.amount = saleDataFromClient.chequeDetails.amount;
+      if (Object.keys(details).length > 0) payload.chequeDetails = details;
+    }
+
+    if (saleDataFromClient.bankTransferDetails) {
+      const details: BankTransferInfo = {};
+      if (saleDataFromClient.bankTransferDetails.bankName) details.bankName = saleDataFromClient.bankTransferDetails.bankName;
+      if (saleDataFromClient.bankTransferDetails.referenceNumber) details.referenceNumber = saleDataFromClient.bankTransferDetails.referenceNumber;
+      if (saleDataFromClient.bankTransferDetails.amount !== undefined) details.amount = saleDataFromClient.bankTransferDetails.amount;
+      if (Object.keys(details).length > 0) payload.bankTransferDetails = details;
+    }
+    // --- End Defensive Payload Construction ---
+
+    const saleId = await addSale(payload);
+    
+    return NextResponse.json({ id: saleId, ...payload, saleDate: saleDate.toISOString() }, { status: 201 });
 
   } catch (error) {
     console.error('Error processing sale:', error);
