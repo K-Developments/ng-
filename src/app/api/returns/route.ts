@@ -5,7 +5,7 @@ import type { ChequeInfo, BankTransferInfo } from '@/lib/types';
 
 interface ReturnRequestBody {
   saleId: string;
-  returnedItems: {
+  returnedItems?: {
     id: string; // This is productId
     saleType: 'retail' | 'wholesale';
     quantity: number; // Quantity being returned in this transaction
@@ -17,7 +17,7 @@ interface ReturnRequestBody {
     appliedPrice: number;
     sku?: string;
   }[];
-  exchangedItems: {
+  exchangedItems?: {
     id: string;
     quantity: number;
      // Include all necessary fields for CartItem reconstruction for saving
@@ -31,8 +31,10 @@ interface ReturnRequestBody {
   staffId: string;
   customerId?: string;
   customerName?: string;
+  customerShopName?: string;
   settleOutstandingAmount?: number;
-  refundAmount?: number;
+  refundAmount?: number; // Credit added to account
+  cashPaidOut?: number; // Cash given to customer
   payment?: {
     amountPaid: number;
     paymentSummary: string;
@@ -45,24 +47,29 @@ interface ReturnRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
+    const body: ReturnRequestBody = await request.json();
     const { 
         saleId, 
-        returnedItems, 
-        exchangedItems,
         staffId,
         customerId,
         customerName,
+        customerShopName,
         settleOutstandingAmount,
         refundAmount,
+        cashPaidOut,
         payment,
         vehicleId,
-    }: ReturnRequestBody = await request.json();
+    } = body;
+
+    // Explicitly handle returnedItems and exchangedItems to ensure they are arrays
+    const returnedItems = Array.isArray(body.returnedItems) ? body.returnedItems : [];
+    const exchangedItems = Array.isArray(body.exchangedItems) ? body.exchangedItems : [];
 
     if (!saleId || !staffId) {
       return NextResponse.json({ error: 'Invalid request body. Missing required fields.' }, { status: 400 });
     }
-     if (returnedItems.length === 0 && exchangedItems.length === 0) {
-      return NextResponse.json({ error: 'Cannot process an empty transaction.' }, { status: 400 });
+     if (returnedItems.length === 0 && exchangedItems.length === 0 && !refundAmount && !cashPaidOut && !settleOutstandingAmount) {
+      return NextResponse.json({ error: 'Cannot process an empty transaction with no financial impact.' }, { status: 400 });
     }
 
     const { returnId, returnData } = await processReturnTransaction({
@@ -72,8 +79,10 @@ export async function POST(request: NextRequest) {
         staffId,
         customerId,
         customerName,
+        customerShopName,
         settleOutstandingAmount,
         refundAmount,
+        cashPaidOut,
         payment,
         vehicleId,
     });
