@@ -34,6 +34,7 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
     originalSaleId,
     returnDate,
     customerName,
+    customerShopName,
     staffId,
     returnedItems,
     exchangedItems,
@@ -67,14 +68,15 @@ export function ReturnInvoiceDialog({ isOpen, onOpenChange, returnTransaction }:
             <div className="flex justify-center mb-1 logo-container">
             <AppLogo size="md" />
             </div>
-            <p className="text-xs">077-1066595, 077-6106616</p>
+            <p className="text-xs">4/1 Bujjampala, Dankotuwa</p>
+            <p className="text-xs">Hotline: 077-1066595, 077-6106616</p>
         </div>
         <Separator className="my-3 summary-separator"/>
         <div className="text-xs mb-3 space-y-0.5">
             <p><strong>Return ID:</strong> <span className="font-mono">{returnId || 'N/A'}</span></p>
             <p><strong>Return Date:</strong> {format(returnDate, "PP, p")}</p>
             <p><strong>Original Sale ID:</strong> {originalSaleId}</p>
-            <p><strong>Customer:</strong> {customerName || "N/A"}</p>
+            <p><strong>Customer:</strong> {customerShopName || customerName || "N/A"}</p>
             <p><strong>Served by:</strong> {staffId}</p>
         </div>
         <Separator className="my-3 summary-separator"/>
