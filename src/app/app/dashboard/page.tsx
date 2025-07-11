@@ -31,6 +31,15 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
+// Utility function for consistent date handling
+const getTodayRange = () => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return { start: today, end: tomorrow };
+};
+
 export default function DashboardPage() {
   const { currentUser } = useAuth();
   const router = useRouter();
@@ -50,68 +59,99 @@ export default function DashboardPage() {
   const { returns, isLoading: isLoadingReturns, error: returnsError } = useReturns();
   const { expenses, isLoading: isLoadingExpenses, error: expensesError } = useExpenses();
 
-  const { revenueToday, salesCountToday, expensesToday } = useMemo(() => {
-    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !sales || !returns || !expenses) return { revenueToday: 0, salesCountToday: 0, expensesToday: 0 };
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
+  const { 
+    revenueToday, 
+    salesCountToday, 
+    expensesToday,
+    grossRevenueToday,
+    netReturnsToday
+  } = useMemo(() => {
+    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !sales || !returns || !expenses) {
+      return { 
+        revenueToday: 0, 
+        salesCountToday: 0, 
+        expensesToday: 0,
+        grossRevenueToday: 0,
+        netReturnsToday: 0
+      };
+    }
 
-    const todaySales = sales.filter(sale => {
+    const { start: todayStart, end: todayEnd } = getTodayRange();
+
+    // Calculate gross sales for today
+    const salesTodayList = sales.filter(sale => {
       const saleDate = sale.saleDate instanceof Date ? sale.saleDate : new Date(sale.saleDate);
-      return saleDate >= today && saleDate <= endOfToday;
+      return saleDate >= todayStart && saleDate < todayEnd;
     });
 
-    const salesRevenueToday = todaySales.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
+    const grossRevenueToday = salesTodayList.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
 
-    const returnedValueForTodaySales = returns
-      .filter(ret => {
-        const returnDate = ret.returnDate instanceof Date ? ret.returnDate : new Date(ret.returnDate);
-        if (returnDate < today || returnDate > endOfToday) return false;
-        
-        const originalSale = sales.find(s => s.id === ret.originalSaleId);
-        if (!originalSale) return false; 
+    // Calculate net returns impact for today
+    const returnsTodayList = returns.filter(ret => {
+      const returnDate = ret.returnDate instanceof Date ? ret.returnDate : new Date(ret.returnDate);
+      return returnDate >= todayStart && returnDate < todayEnd;
+    });
 
-        const originalSaleDate = originalSale.saleDate instanceof Date ? originalSale.saleDate : new Date(originalSale.saleDate);
-        return originalSaleDate >= today && originalSaleDate <= endOfToday;
-      })
-      .reduce((sum, ret) => {
-          const returnedValue = ret.returnedItems.reduce((itemSum, item) => itemSum + (item.quantity * item.appliedPrice), 0);
-          return sum + returnedValue;
-      }, 0);
-    
-    const todayExpenses = expenses
-      .filter(exp => {
-        const expenseDate = exp.expenseDate instanceof Date ? exp.expenseDate : new Date(exp.expenseDate);
-        return expenseDate >= today && expenseDate <= endOfToday;
-      })
-      .reduce((sum, exp) => sum + exp.amount, 0);
-      
-    return {
-      revenueToday: salesRevenueToday - returnedValueForTodaySales - todayExpenses,
-      salesCountToday: todaySales.length,
-      expensesToday: todayExpenses
-    };
-  }, [sales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
-
-  const { netTotalRevenue, totalRefundsAllTime, totalExpensesAllTime } = useMemo(() => {
-    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !returns || !expenses || grossTotalRevenue === undefined) {
-      return { netTotalRevenue: 0, totalRefundsAllTime: 0, totalExpensesAllTime: 0 };
-    }
-    const totalReturnedValue = returns.reduce((sum, ret) => {
-        const returnedValue = ret.returnedItems.reduce((itemSum, item) => itemSum + (item.quantity * item.appliedPrice), 0);
-        return sum + returnedValue;
+    const netReturnsToday = returnsTodayList.reduce((sum, ret) => {
+      const cashPaid = ret.cashPaidOut || 0;
+      const creditGiven = ret.refundAmount || 0;
+      // Net returns is the cash value leaving the business today due to returns.
+      // Exchanges are treated as a new sale component.
+      return sum - cashPaid - creditGiven;
     }, 0);
 
-    const totalExp = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    // Calculate expenses for today
+    const expensesTodayTotal = expenses
+      .filter(exp => {
+        const expenseDate = exp.expenseDate instanceof Date ? exp.expenseDate : new Date(exp.expenseDate);
+        return expenseDate >= todayStart && expenseDate < todayEnd;
+      })
+      .reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
     return {
-      netTotalRevenue: grossTotalRevenue - totalReturnedValue - totalExp,
-      totalRefundsAllTime: totalReturnedValue,
-      totalExpensesAllTime: totalExp
+      grossRevenueToday,
+      netReturnsToday,
+      expensesToday: expensesTodayTotal,
+      salesCountToday: salesTodayList.length,
+      revenueToday: grossRevenueToday + netReturnsToday - expensesTodayTotal
     };
-  }, [grossTotalRevenue, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
+  }, [sales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
+  
+  const { 
+    netTotalRevenue, 
+    grossTotalRevenue: totalGrossRevenue, 
+    totalReturnsImpact, 
+    totalExpensesAllTime 
+  } = useMemo(() => {
+    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !sales || !returns || !expenses) {
+      return { 
+        netTotalRevenue: 0, 
+        grossTotalRevenue: 0,
+        totalReturnsImpact: 0,
+        totalExpensesAllTime: 0
+      };
+    }
+
+    // Calculate gross revenue from all sales
+    const gross = sales.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
+
+    // Calculate total returns impact: all cash out and credit given
+    const returnsImpact = returns.reduce((sum, ret) => {
+        const cashPaid = ret.cashPaidOut || 0;
+        const creditGiven = ret.refundAmount || 0;
+        return sum - cashPaid - creditGiven;
+    }, 0);
+
+    // Calculate total expenses
+    const expensesTotal = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+    return {
+      grossTotalRevenue: gross,
+      totalReturnsImpact: returnsImpact,
+      totalExpensesAllTime: expensesTotal,
+      netTotalRevenue: gross + returnsImpact - expensesTotal
+    };
+  }, [sales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
 
   const { liveLowStockItemsCount, criticalStockItemsCount } = useMemo(() => {
     if (isLoadingProducts || !allProducts || allProducts.length === 0) {
@@ -268,9 +308,9 @@ export default function DashboardPage() {
   const renderStatsCard = (
     title: string,
     value: string | number,
-    icon: React.ComponentType<{ className?: string }>,
+    icon: LucideIcon,
     iconColor: string,
-    description?: string,
+    description?: React.ReactNode,
     trend?: number,
     additionalInfo?: string
   ) => {
@@ -369,8 +409,13 @@ export default function DashboardPage() {
             formatCurrency(netTotalRevenue),
             Banknote,
             "text-green-600",
-            `After all refunds & expenses`,
-            monthlyComparison[new Date().getMonth()]
+            <>
+              <div>Gross: {formatCurrency(totalGrossRevenue)}</div>
+              <div>Returns: {formatCurrency(totalReturnsImpact)}</div>
+              <div>Expenses: {formatCurrency(totalExpensesAllTime)}</div>
+            </>,
+            monthlyComparison[new Date().getMonth()],
+            "After all returns & expenses"
           )
         )}
 
@@ -384,7 +429,13 @@ export default function DashboardPage() {
             formatCurrency(revenueToday),
             TrendingUp,
             "text-purple-600",
-            `${salesCountToday} sales, ${formatCurrency(expensesToday)} expenses`
+            <>
+              <div>{salesCountToday} sales ({formatCurrency(grossRevenueToday)})</div>
+              <div>Returns: {formatCurrency(netReturnsToday)}</div>
+              <div>Expenses: {formatCurrency(expensesToday)}</div>
+            </>,
+            undefined,
+            `Net: ${formatCurrency(revenueToday)}`
           )
         )}
 
@@ -550,7 +601,6 @@ export default function DashboardPage() {
           </Card>
 
           <AlertQuantityTable />
-
         </div>
       </div>
     </div>
