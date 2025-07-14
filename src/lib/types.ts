@@ -869,10 +869,12 @@ export interface DayEndReportSummary {
   totalDiscountsToday: number;
   netSalesValue: number;
   
-  cashFromTodaySales: number;
+  cashFromSales: number;
   cashFromCreditPayments: number;
+  chequeFromCreditPayments: number;
+  bankFromCreditPayments: number;
+  
   totalCashIn: number;
-
   totalChequeIn: number;
   totalBankTransferIn: number;
   
@@ -881,14 +883,15 @@ export interface DayEndReportSummary {
   netCashInHand: number;
 
   newCreditIssued: number;
-  paidAgainstNewCredit: number;
+  creditSettledByReturns: number; // New: Credit settled using return value
+  paidAgainstNewCredit: number; // Payments made against credit issued today
   netOutstandingFromToday: number;
 
   chequeNumbers: string[];
   bankTransferRefs: string[];
   creditSalesCount: number;
-  samplesIssuedCount?: number;
-  sampleTransactionsCount?: number;
+  samplesIssuedCount: number;
+  sampleTransactionsCount: number;
 }
 
 
