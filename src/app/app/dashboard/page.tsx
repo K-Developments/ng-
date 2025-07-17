@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { SalesChart } from "@/components/dashboard/SalesChart";
 import { AlertQuantityTable } from "@/components/dashboard/AlertQuantityTable";
-import type { Sale } from "@/lib/types";
+import type { Sale, ReturnTransaction } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -30,15 +30,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { isSameDay } from "date-fns";
 
-// Utility function for consistent date handling
-const getTodayRange = () => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return { start: today, end: tomorrow };
-};
 
 export default function DashboardPage() {
   const { currentUser } = useAuth();
@@ -46,10 +40,9 @@ export default function DashboardPage() {
   
   const { customers, isLoading: isLoadingCustomers, error: customersError } = useCustomers();
   const { 
-    sales, 
+    sales: allSales, 
     isLoading: isLoadingSales, 
     error: salesError, 
-    totalRevenue: grossTotalRevenue
   } = useSalesData(true);
   const { 
     products: allProducts, 
@@ -59,102 +52,76 @@ export default function DashboardPage() {
   const { returns, isLoading: isLoadingReturns, error: returnsError } = useReturns();
   const { expenses, isLoading: isLoadingExpenses, error: expensesError } = useExpenses();
 
-  const { 
-    revenueToday, 
-    salesCountToday, 
+  const {
+    revenueToday,
+    salesCountToday,
     expensesToday,
     grossRevenueToday,
-    netReturnsToday
   } = useMemo(() => {
-    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !sales || !returns || !expenses) {
-      return { 
-        revenueToday: 0, 
-        salesCountToday: 0, 
-        expensesToday: 0,
-        grossRevenueToday: 0,
-        netReturnsToday: 0
-      };
+    if (isLoadingSales || isLoadingReturns || isLoadingExpenses) {
+      return { revenueToday: 0, salesCountToday: 0, expensesToday: 0, grossRevenueToday: 0 };
     }
-
-    const { start: todayStart, end: todayEnd } = getTodayRange();
-
-    // Calculate gross sales for today
-    const salesTodayList = sales.filter(sale => {
-      if (sale.status === 'cancelled') return false;
-      const saleDate = sale.saleDate instanceof Date ? sale.saleDate : new Date(sale.saleDate);
-      return saleDate >= todayStart && saleDate < todayEnd;
-    });
-
-    const grossRevenueToday = salesTodayList.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
-
-    // Calculate net returns impact for today
-    const returnsTodayList = returns.filter(ret => {
-      const returnDate = ret.returnDate instanceof Date ? ret.returnDate : new Date(ret.returnDate);
-      return returnDate >= todayStart && returnDate < todayEnd;
-    });
-
-    const netReturnsToday = returnsTodayList.reduce((sum, ret) => {
-      const cashPaid = ret.cashPaidOut || 0;
-      const creditGiven = ret.refundAmount || 0;
-      // Net returns is the cash value leaving the business today due to returns.
-      // Exchanges are treated as a new sale component.
-      return sum - cashPaid - creditGiven;
-    }, 0);
-
-    // Calculate expenses for today
-    const expensesTodayTotal = expenses
-      .filter(exp => {
-        const expenseDate = exp.expenseDate instanceof Date ? exp.expenseDate : new Date(exp.expenseDate);
-        return expenseDate >= todayStart && expenseDate < todayEnd;
-      })
-      .reduce((sum, exp) => sum + (exp.amount || 0), 0);
-
+  
+    const todaySales = allSales.filter(s => isSameDay(new Date(s.saleDate), new Date()) && s.status !== 'cancelled');
+  
+    const valueOfReturnsAgainstTodaySales = returns
+      .filter(r => todaySales.some(s => s.id === r.originalSaleId))
+      .reduce((sum, r) => r.returnedItems.reduce((itemSum, item) => itemSum + (item.appliedPrice * item.quantity), 0), 0);
+  
+    const otherRefundsAndLossesToday = returns
+      .filter(r => isSameDay(new Date(r.returnDate), new Date()))
+      .reduce((sum, r) => {
+        const nonResellableValue = r.returnedItems.filter(item => !item.isResellable).reduce((itemSum, item) => itemSum + (item.appliedPrice * item.quantity), 0);
+        return sum + (r.cashPaidOut || 0) + (r.refundAmount || 0) + nonResellableValue;
+      }, 0);
+  
+    const todayExpensesTotal = expenses
+      .filter(exp => isSameDay(new Date(exp.expenseDate), new Date()))
+      .reduce((sum, exp) => sum + exp.amount, 0);
+  
+    const grossRevenueTodayValue = todaySales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const netRevenueToday = grossRevenueTodayValue - valueOfReturnsAgainstTodaySales - otherRefundsAndLossesToday - todayExpensesTotal;
+    
     return {
-      grossRevenueToday,
-      netReturnsToday,
-      expensesToday: expensesTodayTotal,
-      salesCountToday: salesTodayList.length,
-      revenueToday: grossRevenueToday + netReturnsToday - expensesTodayTotal
+      revenueToday: netRevenueToday,
+      salesCountToday: todaySales.length,
+      expensesToday: todayExpensesTotal,
+      grossRevenueToday: grossRevenueTodayValue,
     };
-  }, [sales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
+  }, [allSales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
   
   const { 
     netTotalRevenue, 
-    grossTotalRevenue: totalGrossRevenue, 
-    totalReturnsImpact, 
+    grossTotalRevenue, 
     totalExpensesAllTime 
   } = useMemo(() => {
-    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !sales || !returns || !expenses) {
-      return { 
-        netTotalRevenue: 0, 
-        grossTotalRevenue: 0,
-        totalReturnsImpact: 0,
-        totalExpensesAllTime: 0
-      };
+    if (isLoadingSales || isLoadingReturns || isLoadingExpenses) {
+      return { netTotalRevenue: 0, grossTotalRevenue: 0, totalExpensesAllTime: 0 };
     }
 
-    // Calculate gross revenue from all sales, excluding cancelled ones
-    const gross = sales
-        .filter(sale => sale.status !== 'cancelled')
-        .reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
+    const activeSales = allSales.filter(s => s.status !== 'cancelled');
+    const gross = activeSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
 
-    // Calculate total returns impact: all cash out and credit given
-    const returnsImpact = returns.reduce((sum, ret) => {
-        const cashPaid = ret.cashPaidOut || 0;
-        const creditGiven = ret.refundAmount || 0;
-        return sum - cashPaid - creditGiven;
+    const totalRevenueLossFromReturns = returns.reduce((loss, ret) => {
+      const nonResellableValue = ret.returnedItems
+        .filter(item => !item.isResellable)
+        .reduce((sum, item) => sum + (item.appliedPrice * item.quantity), 0);
+      
+      const cashRefunds = ret.cashPaidOut || 0;
+      const creditRefunds = ret.refundAmount || 0; // Credit to account is a loss
+
+      return loss + nonResellableValue + cashRefunds + creditRefunds;
     }, 0);
 
-    // Calculate total expenses
-    const expensesTotal = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+    const expensesTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const netRevenue = gross - totalRevenueLossFromReturns - expensesTotal;
 
     return {
       grossTotalRevenue: gross,
-      totalReturnsImpact: returnsImpact,
       totalExpensesAllTime: expensesTotal,
-      netTotalRevenue: gross + returnsImpact - expensesTotal
+      netTotalRevenue: netRevenue,
     };
-  }, [sales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
+  }, [allSales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
 
   const { liveLowStockItemsCount, criticalStockItemsCount } = useMemo(() => {
     if (isLoadingProducts || !allProducts || allProducts.length === 0) {
@@ -171,7 +138,7 @@ export default function DashboardPage() {
   }, [allProducts, isLoadingProducts]);
 
   const topSellingProducts = useMemo(() => {
-    if (isLoadingSales || isLoadingProducts || !sales || !allProducts) {
+    if (isLoadingSales || isLoadingProducts || !allSales || !allProducts) {
       return [];
     }
 
@@ -183,7 +150,7 @@ export default function DashboardPage() {
       category?: string;
     }> = {};
 
-    sales.forEach(sale => {
+    allSales.forEach(sale => {
       if (sale.status === 'cancelled') return;
       sale.items.forEach(item => {
         if (!item.isOfferItem) {
@@ -212,10 +179,19 @@ export default function DashboardPage() {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
 
-  }, [sales, allProducts, isLoadingSales, isLoadingProducts]);
+  }, [allSales, allProducts, isLoadingSales, isLoadingProducts]);
+
+  const recentFiveSales = useMemo(() => {
+    if (!allSales) return [];
+    return allSales
+        .filter(s => s.status !== 'cancelled')
+        .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+        .slice(0, 5);
+  }, [allSales]);
+
 
   const { monthlySalesData, monthlyComparison } = useMemo(() => {
-    const activeSales = sales ? sales.filter(s => s.status !== 'cancelled') : [];
+    const activeSales = allSales ? allSales.filter(s => s.status !== 'cancelled') : [];
     if (!activeSales || activeSales.length === 0) {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       return {
@@ -255,7 +231,7 @@ export default function DashboardPage() {
       })),
       monthlyComparison: comparison
     };
-  }, [sales]);
+  }, [allSales]);
 
   const customerGrowth = useMemo(() => {
     if (isLoadingCustomers || !customers) return 0;
@@ -415,12 +391,12 @@ export default function DashboardPage() {
             Banknote,
             "text-green-600",
             <>
-              <div>Gross: {formatCurrency(totalGrossRevenue)}</div>
-              <div>Returns: {formatCurrency(totalReturnsImpact)}</div>
-              <div>Expenses: {formatCurrency(totalExpensesAllTime)}</div>
+              <div>Gross: {formatCurrency(grossTotalRevenue)}</div>
+              <div>Losses/Refunds: -{formatCurrency(grossTotalRevenue - netTotalRevenue - totalExpensesAllTime)}</div>
+              <div>Expenses: -{formatCurrency(totalExpensesAllTime)}</div>
             </>,
             monthlyComparison[new Date().getMonth()],
-            "After all returns & expenses"
+            "After all deductions"
           )
         )}
 
@@ -436,8 +412,8 @@ export default function DashboardPage() {
             "text-purple-600",
             <>
               <div>{salesCountToday} sales ({formatCurrency(grossRevenueToday)})</div>
-              <div>Returns: {formatCurrency(netReturnsToday)}</div>
-              <div>Expenses: {formatCurrency(expensesToday)}</div>
+              <div>Losses/Refunds: -{formatCurrency(grossRevenueToday - revenueToday - expensesToday)}</div>
+              <div>Expenses: -{formatCurrency(expensesToday)}</div>
             </>,
             undefined,
             `Net: ${formatCurrency(revenueToday)}`
@@ -492,7 +468,7 @@ export default function DashboardPage() {
                 Recent Transactions
               </CardTitle>
               <CardDescription>
-                {isLoadingSales ? 'Loading...' : 'Latest sales activities'}
+                {isLoadingSales ? 'Loading...' : 'Latest five sales activities'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -512,43 +488,45 @@ export default function DashboardPage() {
                 <div className="text-center text-destructive py-10">
                   <p>Could not load transactions.</p>
                 </div>
-              ) : (!sales || sales.length === 0) ? (
+              ) : (!recentFiveSales || recentFiveSales.length === 0) ? (
                 <div className="text-center text-muted-foreground py-10">
                   No transactions yet.
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sales.filter(s => s.status !== 'cancelled').slice(0, 5).map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell className="font-medium">#{sale.id}</TableCell>
-                        <TableCell>
-                          {sale.customerName || "Walk-in Customer"}
-                          {sale.customerShopName && (
-                            <div className="text-xs text-muted-foreground">{sale.customerShopName}</div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCurrency(sale.totalAmount)}</TableCell>
-                        <TableCell className="text-right">
-                          <Badge 
-                            variant={sale.outstandingBalance > 0 ? 'destructive' : 'default'}
-                            className={cn(sale.outstandingBalance === 0 && "bg-green-600 hover:bg-green-700")}
-                          >
-                            {sale.outstandingBalance > 0 ? 'Pending' : 'Completed'}
-                          </Badge>
-                        </TableCell>
+                <ScrollArea className="h-[300px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {recentFiveSales.map((sale) => (
+                        <TableRow key={sale.id}>
+                          <TableCell className="font-medium">#{sale.id}</TableCell>
+                          <TableCell>
+                            {sale.customerName || "Walk-in Customer"}
+                            {sale.customerShopName && (
+                              <div className="text-xs text-muted-foreground">{sale.customerShopName}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">{formatCurrency(sale.totalAmount)}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge 
+                              variant={sale.outstandingBalance > 0 ? 'destructive' : 'default'}
+                              className={cn(sale.outstandingBalance === 0 && "bg-green-600 hover:bg-green-700")}
+                            >
+                              {sale.outstandingBalance > 0 ? 'Pending' : 'Completed'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
