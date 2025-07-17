@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Banknote, Users, TrendingUp, Activity, AlertTriangle, Loader2, ShoppingBag, BarChart2, Package, type LucideIcon, Wallet } from "lucide-react";
+import { Banknote, Users, TrendingUp, Activity, AlertTriangle, Loader2, ShoppingBag, BarChart2, Package, type LucideIcon, Wallet, Beaker } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { SalesChart } from "@/components/dashboard/SalesChart";
@@ -26,6 +26,7 @@ import { useSalesData } from "@/hooks/useSalesData";
 import { useProducts } from "@/hooks/useProducts";
 import { useReturns } from "@/hooks/useReturns";
 import { useExpenses } from "@/hooks/useExpenses";
+import { useStockTransactions } from "@/hooks/useStockTransactions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -51,85 +52,102 @@ export default function DashboardPage() {
   } = useProducts();
   const { returns, isLoading: isLoadingReturns, error: returnsError } = useReturns();
   const { expenses, isLoading: isLoadingExpenses, error: expensesError } = useExpenses();
+  const { transactions: stockTransactions, isLoading: isLoadingStock, error: stockError } = useStockTransactions();
 
   const {
     revenueToday,
     salesCountToday,
-    expensesToday,
     grossRevenueToday,
-    refundsAndLossesToday,
+    totalDeductionsToday,
   } = useMemo(() => {
-    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !allSales || !returns || !expenses) {
-      return { revenueToday: 0, salesCountToday: 0, expensesToday: 0, grossRevenueToday: 0, refundsAndLossesToday: 0 };
+    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || isLoadingStock || !allSales || !returns || !expenses || !stockTransactions || !allProducts) {
+      return { revenueToday: 0, salesCountToday: 0, grossRevenueToday: 0, totalDeductionsToday: 0 };
     }
   
-    const todaySales = allSales.filter(s => isSameDay(new Date(s.saleDate), new Date()) && s.status !== 'cancelled');
-  
-    // Calculate the total value of items returned *against today's sales* to adjust gross revenue.
-    const valueOfReturnsAgainstTodaySales = returns
-      .filter(r => todaySales.some(s => s.id === r.originalSaleId))
-      .reduce((sum, r) => r.returnedItems.reduce((itemSum, item) => itemSum + (item.appliedPrice * item.quantity), 0), 0);
-  
-    // Calculate true losses: non-resellable returns + refunds (cash or credit).
-    const todayRefundsAndLosses = returns
-      .filter(r => isSameDay(new Date(r.returnDate), new Date()))
-      .reduce((sum, r) => {
-        const nonResellableValue = r.returnedItems.filter(item => !item.isResellable).reduce((itemSum, item) => itemSum + (item.appliedPrice * item.quantity), 0);
-        return sum + (r.cashPaidOut || 0) + (r.refundAmount || 0) + nonResellableValue;
-      }, 0);
-  
-    const todayExpensesTotal = expenses
-      .filter(exp => isSameDay(new Date(exp.expenseDate), new Date()))
-      .reduce((sum, exp) => sum + exp.amount, 0);
-  
-    const grossRevenueTodayValue = todaySales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const today = new Date();
+    const activeSalesToday = allSales.filter(s => isSameDay(s.saleDate, today) && s.status !== 'cancelled');
+    const cancelledSalesToday = allSales.filter(s => s.status === 'cancelled' && s.updatedAt && isSameDay(s.updatedAt, today));
+    const returnsToday = returns.filter(r => isSameDay(r.returnDate, today));
+    const expensesTodayList = expenses.filter(exp => isSameDay(exp.expenseDate, today));
+    const samplesToday = stockTransactions.filter(tx => tx.type === 'ISSUE_SAMPLE' && isSameDay(tx.transactionDate, today));
+
+    // 1. Gross Revenue for today
+    const grossRevenue = activeSalesToday.reduce((sum, sale) => sum + sale.totalAmount, 0);
+
+    // 2. Total Deductions for today
+    const expensesTotal = expensesTodayList.reduce((sum, exp) => sum + exp.amount, 0);
     
-    // Net revenue is today's gross, minus value of goods returned, minus other losses, minus expenses.
-    const netRevenueToday = grossRevenueTodayValue - valueOfReturnsAgainstTodaySales - todayRefundsAndLosses - todayExpensesTotal;
+    const refundsTotal = returnsToday.reduce((sum, r) => sum + (r.cashPaidOut || 0) + (r.refundAmount || 0), 0);
+    
+    const nonResellableLoss = returnsToday.reduce((sum, r) => {
+        const nonResellableValue = r.returnedItems.filter(item => !item.isResellable).reduce((itemSum, item) => itemSum + (item.appliedPrice * item.quantity), 0);
+        return sum + nonResellableValue;
+    }, 0);
+
+    const samplesLoss = samplesToday.reduce((sum, tx) => {
+        const product = allProducts.find(p => p.id === tx.productId);
+        const sampleValue = product ? tx.quantity * product.price : 0;
+        return sum + sampleValue;
+    }, 0);
+
+    const cancelledValue = cancelledSalesToday.reduce((sum, s) => sum + s.totalAmount, 0);
+    
+    const totalDeductions = expensesTotal + refundsTotal + nonResellableLoss + samplesLoss + cancelledValue;
+
+    // 3. Net Revenue for today
+    const netRevenue = grossRevenue - totalDeductions;
     
     return {
-      revenueToday: netRevenueToday,
-      salesCountToday: todaySales.length,
-      expensesToday: todayExpensesTotal,
-      grossRevenueToday: grossRevenueTodayValue,
-      refundsAndLossesToday: todayRefundsAndLosses,
+      revenueToday: netRevenue,
+      salesCountToday: activeSalesToday.length,
+      grossRevenueToday: grossRevenue,
+      totalDeductionsToday: totalDeductions,
     };
-  }, [allSales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
+  }, [allSales, returns, expenses, stockTransactions, allProducts, isLoadingSales, isLoadingReturns, isLoadingExpenses, isLoadingStock, isLoadingProducts]);
   
   const { 
     netTotalRevenue, 
     grossTotalRevenue, 
-    totalExpensesAllTime,
-    totalRefundsAndLossesAllTime
+    totalDeductionsAllTime,
   } = useMemo(() => {
-    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || !allSales || !returns || !expenses) {
-      return { netTotalRevenue: 0, grossTotalRevenue: 0, totalExpensesAllTime: 0, totalRefundsAndLossesAllTime: 0 };
+    if (isLoadingSales || isLoadingReturns || isLoadingExpenses || isLoadingStock || !allSales || !returns || !expenses || !stockTransactions || !allProducts) {
+      return { netTotalRevenue: 0, grossTotalRevenue: 0, totalDeductionsAllTime: 0 };
     }
 
     const activeSales = allSales.filter(s => s.status !== 'cancelled');
-    const gross = activeSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const cancelledSales = allSales.filter(s => s.status === 'cancelled');
 
-    const totalRevenueLossFromReturns = returns.reduce((loss, ret) => {
-      const nonResellableValue = ret.returnedItems
-        .filter(item => !item.isResellable)
-        .reduce((sum, item) => sum + (item.appliedPrice * item.quantity), 0);
-      
-      const cashRefunds = ret.cashPaidOut || 0;
-      const creditRefunds = ret.refundAmount || 0; // Credit to account is a loss
-
-      return loss + nonResellableValue + cashRefunds + creditRefunds;
+    // 1. Gross Revenue
+    const grossRevenue = activeSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    
+    // 2. Total Deductions
+    const expensesTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const refundsTotal = returns.reduce((sum, r) => sum + (r.cashPaidOut || 0) + (r.refundAmount || 0), 0);
+    
+    const nonResellableLoss = returns.reduce((sum, r) => {
+        const nonResellableValue = r.returnedItems.filter(item => !item.isResellable).reduce((itemSum, item) => itemSum + (item.appliedPrice * item.quantity), 0);
+        return sum + nonResellableValue;
+    }, 0);
+    
+    const samplesLoss = stockTransactions.filter(tx => tx.type === 'ISSUE_SAMPLE').reduce((sum, tx) => {
+        const product = allProducts.find(p => p.id === tx.productId);
+        const sampleValue = product ? tx.quantity * product.price : 0;
+        return sum + sampleValue;
     }, 0);
 
-    const expensesTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const netRevenue = gross - totalRevenueLossFromReturns - expensesTotal;
+    const cancelledValue = cancelledSales.reduce((sum, s) => sum + s.totalAmount, 0);
+
+    const totalDeductions = expensesTotal + refundsTotal + nonResellableLoss + samplesLoss + cancelledValue;
+
+    // 3. Net Revenue
+    const netRevenue = grossRevenue - totalDeductions;
 
     return {
-      grossTotalRevenue: gross,
-      totalExpensesAllTime: expensesTotal,
+      grossTotalRevenue: grossRevenue,
+      totalDeductionsAllTime: totalDeductions,
       netTotalRevenue: netRevenue,
-      totalRefundsAndLossesAllTime: totalRevenueLossFromReturns,
     };
-  }, [allSales, returns, expenses, isLoadingSales, isLoadingReturns, isLoadingExpenses]);
+  }, [allSales, returns, expenses, stockTransactions, allProducts, isLoadingSales, isLoadingReturns, isLoadingExpenses, isLoadingStock, isLoadingProducts]);
 
   const { liveLowStockItemsCount, criticalStockItemsCount } = useMemo(() => {
     if (isLoadingProducts || !allProducts || allProducts.length === 0) {
@@ -386,11 +404,18 @@ export default function DashboardPage() {
           <AlertDescription>{expensesError}</AlertDescription>
         </Alert>
       )}
+      {stockError && (
+        <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Stock Transaction Error</AlertTitle>
+            <AlertDescription>{stockError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {isLoadingSales || isLoadingReturns || isLoadingExpenses ? (
+        {isLoadingSales || isLoadingReturns || isLoadingExpenses || isLoadingStock ? (
           renderLoadingCard("Total Net Revenue", Banknote, "text-green-600")
-        ) : salesError || returnsError || expensesError ? (
+        ) : salesError || returnsError || expensesError || stockError ? (
           renderErrorCard("Total Net Revenue", Banknote, "text-green-600")
         ) : (
           renderStatsCard(
@@ -400,17 +425,16 @@ export default function DashboardPage() {
             "text-green-600",
             <>
               <div>Gross: {formatCurrency(grossTotalRevenue)}</div>
-              <div>Refunds &amp; Losses: -{formatCurrency(totalRefundsAndLossesAllTime)}</div>
-              <div>Expenses: -{formatCurrency(totalExpensesAllTime)}</div>
+              <div>Deductions: -{formatCurrency(totalDeductionsAllTime)}</div>
             </>,
             monthlyComparison[new Date().getMonth()],
             "After all deductions"
           )
         )}
 
-        {isLoadingSales || isLoadingReturns || isLoadingExpenses ? (
+        {isLoadingSales || isLoadingReturns || isLoadingExpenses || isLoadingStock ? (
           renderLoadingCard("Today's Net Revenue", TrendingUp, "text-purple-600")
-        ) : salesError || returnsError || expensesError ? (
+        ) : salesError || returnsError || expensesError || stockError ? (
           renderErrorCard("Today's Net Revenue", TrendingUp, "text-purple-600")
         ) : (
           renderStatsCard(
@@ -420,8 +444,7 @@ export default function DashboardPage() {
             "text-purple-600",
             <>
               <div>{salesCountToday} sales ({formatCurrency(grossRevenueToday)})</div>
-              <div>Refunds &amp; Losses: -{formatCurrency(refundsAndLossesToday)}</div>
-              <div>Expenses: -{formatCurrency(expensesToday)}</div>
+              <div>Deductions: -{formatCurrency(totalDeductionsToday)}</div>
             </>,
             undefined,
             `Net: ${formatCurrency(revenueToday)}`
