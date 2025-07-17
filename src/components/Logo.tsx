@@ -7,7 +7,7 @@ import Image from "next/image";
 export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" | "iconOnly" }) {
   const sizeMap = {
     sm: { class: "h-6 w-6", width: 24, height: 24 },
-    md: { class: "h-8 w-8", width: 32, height: 32 },
+    md: { class: "h-8 w-full", width: 60, height: 32 },
     lg: { class: "h-10 w-10", width: 24, height: 24 },
     iconOnly: { class: "h-7 w-7", width: 28, height: 28 },
   };
