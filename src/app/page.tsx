@@ -117,7 +117,7 @@ export default function LoginPage() {
         <Card className="w-full max-w-sm shadow-2xl bg-card/80 dark:bg-card/60 backdrop-blur-lg border-white/10">
           <CardHeader className="space-y-1 text-center">
             <div className="mx-auto mb-4">
-              <AppLogo />
+              <Logo />
             </div>
             <CardTitle className="text-3xl font-headline">Welcome to <br /> N Group Products</CardTitle>
             <CardDescription className="text-card-foreground/80">Enter your credentials to access your account</CardDescription>
