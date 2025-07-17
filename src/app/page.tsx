@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AppLogo } from "@/components/AppLogo";
+import { Logo } from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import React, { useState, FormEvent, useEffect, useRef } from "react";
